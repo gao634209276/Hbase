@@ -1,4 +1,4 @@
-package com.study.hbase;
+package hbase.newapi;
 
 import java.io.IOException;
 import java.util.ArrayList;
