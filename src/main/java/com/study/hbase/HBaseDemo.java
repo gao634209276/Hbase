@@ -1,4 +1,4 @@
-package cn.itcast.hbase;
+package com.study.hbase;
 
 import java.io.IOException;
 import java.util.ArrayList;

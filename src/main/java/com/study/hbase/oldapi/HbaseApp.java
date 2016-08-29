@@ -1,4 +1,4 @@
-package cn.it18zhang.hbase;
+package com.study.hbase.oldapi;
 
 import java.io.IOException;
 import java.util.List;

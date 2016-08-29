@@ -1,4 +1,4 @@
-package com.it18zhang.hbase.test;
+package com.study.hbase;
 
 import java.io.IOException;
 

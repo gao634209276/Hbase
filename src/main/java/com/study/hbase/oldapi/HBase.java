@@ -1,4 +1,4 @@
-package com.study.hbase;
+package com.study.hbase.oldapi;
 
 import java.io.IOException;
 
