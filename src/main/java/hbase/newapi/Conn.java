@@ -11,7 +11,7 @@ import org.apache.hadoop.hbase.client.Connection;
 import org.apache.hadoop.hbase.client.ConnectionFactory;
 import org.apache.hadoop.hbase.client.Table;
 
-public class Demo1 {
+public class Conn {
 	static Configuration conf = null;
 	static Connection conn = null;
 	static {
@@ -26,5 +26,4 @@ public class Demo1 {
 			e.printStackTrace();
 		}
 	}
-
 }
