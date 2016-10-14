@@ -1,4 +1,4 @@
-package hbase.newapi;
+package newapi;
 
 
 import java.io.IOException;

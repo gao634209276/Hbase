@@ -1,4 +1,4 @@
-package hbase.oldapi;
+package oldapi;
 /*
  * Need Packages:
  * commons-codec-1.4.jar
@@ -10,7 +10,6 @@ package hbase.oldapi;
  */
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
