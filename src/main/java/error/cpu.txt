@@ -1,0 +1,42 @@
+http://blackproof.iteye.com/blog/2226796
+先确定pid：
+top
+找到最消耗cpu的进程15495
+
+再确定tid：
+ps -mp 15495 -o THREAD,tid,time
+找到最占用cpu的进程18448
+printf "%x\n" 18448
+4810
+
+打印堆栈
+jstack 15495 | grep 4810 -A 30
+
+例如发现栈如下：
+是读写hfile发生的错误，导致启动多个runnable
+一个应用占用CPU很高，除了确实是计算密集型应用之外，通常原因都是出现了死循环。
+（友情提示：本博文章欢迎转载，但请注明出处：hankchen，http://www.blogjava.net/hankchen）
+以我们最近出现的一个实际故障为例，介绍怎么定位和解决这类问题。
+
+根据top命令，发现PID为28555的Java进程占用CPU高达200%，出现故障。
+通过ps aux | grep PID命令，可以进一步确定是tomcat进程出现了问题。但是，怎么定位到具体线程或者代码呢？
+首先显示线程列表:
+ps -mp pid -o THREAD,tid,time
+
+找到了耗时最高的线程28802，占用CPU时间快两个小时了！
+其次将需要的线程ID转换为16进制格式：
+printf "%x\n" tid
+最后打印线程的堆栈信息：
+jstack pid |grep tid -A 30
+找到出现问题的代码了！
+现在来分析下具体的代码：ShortSocketIO.readBytes(ShortSocketIO.java:106)
+ShortSocketIO是应用封装的一个用短连接Socket通信的工具类。readBytes函数的代码如下：
+
+
+
+
+
+
+
+
+
