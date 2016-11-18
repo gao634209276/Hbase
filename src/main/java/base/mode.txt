@@ -1,0 +1,8 @@
+rowkey cf cq的设计
+keyvalue的结构是
+key length 	value length
+row length 	row
+
+column family length,
+column family,column Qualifer
+	time stamp 	key type 	value

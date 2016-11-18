@@ -1,0 +1,28 @@
+1. 创建表
+	create 'student','name','address'
+	新建student表，该表有两列:名称和地址，名称只有一个，address可以有多个，
+	create 'dirktest', {NAME => 'cf'},{SPLITS => ['1','2','3']}
+
+2.插入一条记录，只能插入某列
+	put 'student','1','name','tom'
+	向student有中插入记录，记录的row值为1,列name的值为tom
+
+3. 根据row值 查询一条记录
+	get 'student','1'
+
+4. 根据row值更新name值 （系统会直接更新）
+	put 'student','1','name','tom2'
+
+5.再查询时，系统返回最新的值
+
+6.根据timestamp查询更新之前的 name值，
+	get 'student','1',{COLUMN=>'name',TIMESTAMP=>1301473112875}
+
+7. 给学生的地址簇插入家庭地址
+	put 'student','1','address:home','shenzhen street'
+
+8. 给学生的地址簇插入学校地址
+	put 'student','1','address:school','huaqiangbei street'
+
+9. 查询学生的家庭地址
+	get 'student','1',{COLUMN=>'address:home'}

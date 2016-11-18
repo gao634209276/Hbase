@@ -1,0 +1,196 @@
+HBase Web 管理工具
+HBase Shell管理工具
+其他管理工具
+
+Hbase Web 管理工具
+Web管理工具是HBase对外提供的一个Web接口，可以通过浏览器进行访问
+Hmaster的Web接口
+	— 端口参数：hbase.master.info.port   默认值 是16010
+	— http://hbase_master_server:16010
+RegionServer的Web接口
+	— 端口参数：hbase.regionserver.info.port  默认值是16030
+	— http://hbase_region_server:16030
+
+管理工具虽然比较简单，但是可以查看集群的一些状态信息
+	— HBase的版本信息
+	— HBase的基本配置信息
+	— HBase在HDFS中的存储路径
+	— ZooKeeper的节点
+	— 集群的负载信息
+	— 表、region和region server的信息
+	— 可以进行compat和split操作
+
+HBase Shell管理工具
+
+随HBase发布的一个命令行的工具，提供了针对数据表的DDL操作和集群管理操作
+在HBase的客户端节点，启动hbase shell
+	 $ ./bin/hbase shell
+	 hbase(main):001:0> help
+	 hbase(main):001:0> help 'create'
+
+创建一张测试表
+	hbase(main):001:0> create 'test', 'cf'
+	0 row(s) in 0.4170 seconds
+
+	=> Hbase::Table - test
+
+查看表
+	hbase(main):002:0> list 'test'
+	TABLE
+	test
+	1 row(s) in 0.0180 seconds
+
+	=> [“test”]
+扫描表结构
+	hbase(main):002:0> describe 'test'
+
+插入数据
+	hbase(main):003:0> put 'test', 'row1', 'cf:a', 'value1'
+	0 row(s) in 0.0850 seconds
+
+	hbase(main):004:0> put 'test', 'row2', 'cf:b', 'value2'
+	0 row(s) in 0.0110 seconds
+
+	hbase(main):005:0> put 'test', 'row3', 'cf:c', 'value3'
+	0 row(s) in 0.0100 seconds
+
+查询表数据
+	hbase(main):006:0> scan 'test'
+	ROW                                      COLUMN+CELL
+ 	row1                                    column=cf:a, timestamp=1421762485768, value=value1
+ 	row2                                    column=cf:b, timestamp=1421762491785, value=value2
+	row3                                    column=cf:c, timestamp=1421762496210, value=value3
+	3 row(s) in 0.0230 seconds
+
+查询单条数据
+	hbase(main):007:0> get 'test', 'row1'
+	COLUMN                                   CELL
+ 	cf:a                                    timestamp=1421762485768, value=value1
+	1 row(s) in 0.0350 seconds
+
+在删除或者更改表属性时，需要disable表，更改完成后可以enable表
+disable和enable表
+	hbase(main):008:0> disable 'test'
+	0 row(s) in 1.1820 seconds
+
+	hbase(main):009:0> enable 'test'
+	0 row(s) in 0.1770 seconds
+
+disable表
+	hbase(main):008:0> disable 'test'
+	0 row(s) in 1.1820 seconds
+为test表更改版本数，并且添加一个新的列族
+	 hbase(main):008:0> alter 'test', {NAME => 'cf', VERSIONS => '2'}, {NAME => 'cf1'}
+	hbase(main):009:0> enable 'test'
+	0 row(s) in 0.1770 seconds
+
+删除表
+	hbase(main):008:0> disable 'test'
+	0 row(s) in 1.1820 seconds
+
+	hbase(main):011:0> drop 'test'
+	0 row(s) in 0.1370 seconds
+
+退出hbase shell
+	— quit命令可以退出hbase shell
+	— 但是不会关闭hbase
+
+HBase的数据首先会写入到Write Ahead Log (WAL) 日志中
+然后再写入到region server 的memstore中
+在达到一个阀值之后才会写入到磁盘中
+	— 阀值的大小参数： hbase.hregion.memstore.flush.size 默认是128M
+flush操作可以将memstore中的内存数据写入到磁盘中
+
+flush某张表的所有region
+	— hbase> flush 'hly_temp'
+flush某张表的特定region
+	— 在Hmaster的Web管理界面中找到表的region name
+	— hbase> flush 'hly_temp, ,1324174482248.
+e3d9b9952973964f3d8e61e191924698.'
+
+split可以将表的所有region或者某个region进行分割
+	— hbase(main):002:0> split 'hly_temp,,1438334725398.da8c833941d5ffcc93a70c454307a8c0.'
+在Web管理工具中查看表的region是不是增加了
+
+
+Compact
+	— 把多个小的HFile合并成一个大的文件
+	— 减少HFile数量，提升读效率
+	— 执行时严重影响HBase性能
+Minor Compact
+	— 把多个小的HFile合成数量较少的大的Hfile
+	— 合并较快，但是会影响磁盘IO
+Major Compact
+	— 一个store下的所有文件合并
+	— 删除过期版本数据
+	— 删除delete marker数据
+	— 指定间隔时间或手动执行
+
+对表执行compat操作
+	— hbase> compact 'hly_temp'
+对表执行major compat操作
+	— hbase> major_compact 'hly_temp'
+
+随着数量的不断增长，集群数据在不同region server上的分布可能会不均匀
+虽然HBase会周期性的在后台执行数据平衡的操作
+但是当我们需要维护或者重启一个regionserver时，会关闭balancer，这样就使得region在regionserver上的分布不均，这个时候需要手工的开启balance
+启用平衡器
+	hbase> balance_switch true
+	true（这是balance以前的状态）
+使用balancer命令执行集群的数据均衡
+	hbase> balancer
+	true （true代表一个balance操作已经在后台触发）
+
+move操作可以将一个region移动到一个特定的region server
+语法：move 'encodeRegionName', 'ServerName'
+	— encodeRegionName指的regioName后面的编码
+	— ServerName指的是在hmaster web界面中看到的Region Servers列表
+示例
+hbase(main)>move '3fe79ad9550e5fe69d557143b67d0068', 'slave1,16020,1438766885125'
+
+
+其他管理工具
+
+RowCounter工具可以查看某张表有多少行
+虽然Hbase shell的count命令也可以查找某张表有多少行，但是在数据量大的情况下，效率会非常差
+RowCounter会以MapReduce任务的方式来查找某张表有多少行，在大数据量的情况下会更为高效
+	— ./hbase org.apache.hadoop.hbase.mapreduce.RowCounter hly_temp
+
+WAL（Write Ahead Log)
+	— HBase的预写日志文件，有时也称为HLog，在HBase中发生的更新操作，只有WAL写成功后，才会更新memstore里面的数据。
+	— WAL文件存储在HDFS中，是一个sequence文件，并且会在不同的DataNode中进行复制，保持日志文件的冗余
+	— RegionServer上所有的Region共享HLog文件；也就是RegionServer的个数与HLog是一一对应的
+
+FSHLog工具可以将WAL进行split或者dump
+将WAL文件的内容dump出来
+	— ./hbase org.apache.hadoop.hbase.regionserver.wal.FSHLog --dump hdfs://master:9000/hbase/WALs/slave1,16020,1439430246468/slave1%2C16020%2C1439430246468.default.1439430419372
+将WAL进行分割
+	— ./hbase org.apache.hadoop.hbase.regionserver.wal.FSHLog --split hdfs://master:9000/hbase/WALs/slave1,16020,1439430246468/
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

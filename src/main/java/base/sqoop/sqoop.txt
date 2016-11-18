@@ -1,0 +1,42 @@
+sqoop简介
+	— 将Hadoop和关系型数据库中的数据相互转移的工具
+	— 可以将一个关系型数据库（例如 ： MySQL ,Oracle ,Postgres等）中的数据导进到Hadoop的HDFS中，也可以将HDFS的数据导进到关系型数据库中。
+	— 通过hadoop的mapreduce把数据从关系型数据库中导入数据到HDFS。
+关于版本
+	— 目前为止，已经演化出了2个版本：sqoop1和sqoop2。
+	— sqoop1的最新版本是1.4.6，sqoop2的最新版本是1.99.6；1.99.6和1.4.6是不兼容的，并且功能尚未开发完成，还不适合在生产环境部署。
+
+sqoop的使用
+sqoop的使用 — 创建MySQL数据源
+	在主节点上安装MySQL,注意安装
+	 apt-get install mysql-client-5.6 mysql-server-5.6 python-mysqldb
+	连接数据库,创建测试数据库
+		create database hbase CHARACTER SET utf8;
+	为root用户授权
+		GRANT ALL PRIVILEGES ON hbase.* TO 'root'@'%' IDENTIFIED BY 'zhoubing' WITH GRANT OPTION;
+		use hbase;
+	创建测试表 See: create _table_hly_temp_normal.txt
+	导入数据
+		修改insert_hly.py,修改数据名称、用户名和密码等信息
+		python insert_hly.py -f hly-temp-normal.txt -t hly_temp_normal
+		如果数据库没有pythonDB支持可以进入mysql中操作:
+	 查询以验证数据
+		select count(*) from hly_temp_normal;
+
+
+sqoop的使用 — 安装sqoop
+	以hadoop用户解压缩sqoop
+	编辑和修改sqoop的配置文件sqoop -env.sh
+		— export HADOOP_COMMON_HOME=/hadoop/hadoop-2.6.0
+		— export HADOOP_MAPRED_HOME=/hadoop/hadoop-2.6.0
+		— export HBASE_HOME=/hadoop/hbase-1.0.1.1
+	将mysql的JDBC拷贝到sqoop的lib目录下
+测试sqoop是否可用
+	./sqoop help
+	连接mysql，查看可用的数据库
+	./sqoop list-databases --connect jdbc:mysql://172.17.0.2:3306/ -username root -password mysql
+	在hbase中创建测试表
+	create 'hly_temp', {NAME => 'cf1', VERSIONS => 1}
+	测试sqoop
+	将mysql的数据导入到hbase中
+sqoop import --connect jdbc:mysql:///172.17.0.2:3306/hbase --table hly_temp_normal --hbase-table hly_temp --column-family cf1 --hbase-row-key id --username root -password mysql -m 1
