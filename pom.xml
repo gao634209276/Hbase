@@ -14,6 +14,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <hbase.version>1.2.1</hbase.version>
         <zookeeper.version>3.4.6</zookeeper.version>
+        <hadoop.version>2.7.2</hadoop.version>
     </properties>
     <dependencies>
         <!--hadoop/hbase都要依赖(RPC通信) -->
@@ -30,7 +31,17 @@
         </dependency>
         <dependency>
             <groupId>org.apache.hbase</groupId>
+            <artifactId>hbase</artifactId>
+            <version>${hbase.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.hbase</groupId>
             <artifactId>hbase-client</artifactId>
+            <version>${hbase.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.hbase</groupId>
+            <artifactId>hbase-server</artifactId>
             <version>${hbase.version}</version>
         </dependency>
         <dependency>
@@ -38,7 +49,11 @@
             <artifactId>hbase-common</artifactId>
             <version>${hbase.version}</version>
         </dependency>
-
+        <dependency>
+            <groupId>org.apache.hadoop</groupId>
+            <artifactId>hadoop-client</artifactId>
+            <version>${hadoop.version}</version>
+        </dependency>
         <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>

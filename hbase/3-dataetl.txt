@@ -1,0 +1,52 @@
+MapReduce On HBase
+--------------------------------------------------------
+HBase 自带 MapReduce 工具使用
+	HADOOP_CLASSPATH=`${HBASE_HOME}/bin/hbase classpath` ${HADOOP_HOME}/bin/hadoop jar ${HBASE_HOME}/lib/hbase-server-1.2.1.jar
+	数据:data
+	rk0001	zhangsan	31
+	rk0002	lisi	33
+	上传到hadoop上:hadoop fs -put data /hbase_user
+importtsv
+	将hdfs数据导入到hbase表中:
+	HADOOP_CLASSPATH=`${HBASE_HOME}/bin/hbase classpath` \
+	${HADOOP_HOME}/bin/hadoop jar ${HBASE_HOME}/lib/hbase-server-1.2.1.jar \
+	importtsv -Dimporttsv.columns=HBASE_ROW_KEY,info:name,info:age user /hbase_user
+rowcounter
+	HADOOP_CLASSPATH=`${HBASE_HOME}/bin/hbase classpath` \
+	${HADOOP_HOME}/bin/hadoop jar ${HBASE_HOME}/lib/hbase-server-1.2.1.jar \
+	rowcounter user
+
+清除表数据:truncate 'user'
+直接加载数据
+	HADOOP_CLASSPATH=`${HBASE_HOME}/bin/hbase classpath` \
+	${HADOOP_HOME}/bin/hadoop jar ${HBASE_HOME}/lib/hbase-server-1.2.1.jar \
+	importtsv -Dimporttsv.columns=HBASE_ROW_KEY,info:name,info:age user /hbase_user \
+	-Dimporttsv.bulk.output=/hbase_user
+数据导入导出
+	HADOOP_CLASSPATH=`${HBASE_HOME}/bin/hbase classpath` \
+	${HADOOP_HOME}/bin/hadoop jar ${HBASE_HOME}/lib/hbase-server-1.2.1.jar \
+	export user /hbase_export
+	清空表truncate 'user'
+	HADOOP_CLASSPATH=`${HBASE_HOME}/bin/hbase classpath` \
+	${HADOOP_HOME}/bin/hadoop jar ${HBASE_HOME}/lib/hbase-server-1.2.1.jar \
+	import user /hbase_export
+Mysql导入导出
+	sqoop import  --connect jdbc:mysql://hadoop:3306/hbase \
+	--username root \
+	--password root \
+	--column-family info \
+	--hbase-bulkload \
+	--hbase-create-table \
+	--hbase-row-key id \
+	--hbase-table user2 \
+	--table user
+--------------------------------------------------------
+HBase 表数据迁移
+create 'tab1','info'
+create 'tab2','info'
+put 'tab1','rk00001','info:name','zhangsan'
+put 'tab1','rk00001','info:name','lisi'
+
+HDFS 数据导入 HBase
+HBase BulkLoad
+BulkLoad 源码分析

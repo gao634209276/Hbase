@@ -1,0 +1,41 @@
+HBase Java 编程
+HBase Java  API 基本操作
+HBase 扫描器
+HBase 过滤器
+HBase Java API 基本操作
+	Linux 开发环境搭建
+	HBase API 之基本操作
+	HBase API 之命名空间与表
+	HBase 扫描器
+		单条数据扫描
+		全表扫描
+		范围查询
+		缓存优化
+
+ alter 't1',{NAME=>'secret',VERSION=>3}
+put 't1','rk0001','info:age','22'
+put 't1','rk0001','info:name','lisi'
+put 't1','rk0001','secret:idcart','12345678'
+put 't1','rk0002','info:name','wangwu'
+put 't1','rk0002','info:age','30'
+put 't1','rk0003','info:name','zhangsan'
+put 't1','rk0003','info:school','school'
+put 't1','rk0004','info:name','hello'
+
+HBase 过滤器
+	ColumnPrefixFilter
+	FamilyFilter
+	PageFilter
+	ByteArrayComparable
+
+本套课程中我们学习了使用Java API 操作 HBase。你应当掌握了以下知识：
+Linux开发HBase的环境搭建
+HBase表数据的基本操作与缓存优化
+HBase过滤器的使用
+你可以使用这些技巧操作HBase，如果想继续提高，你可以继续在极客学院学习HBase课程。
+----------------------------------------
+create 'tab1','info'
+create 'tab2','info'
+put 'tab1','rk00001','info:name','zhangsan'
+put 'tab1','rk00001','info:name','lisi'
+

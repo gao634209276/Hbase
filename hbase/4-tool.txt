@@ -31,7 +31,6 @@ HBase Shell管理工具
 创建一张测试表
 	hbase(main):001:0> create 'test', 'cf'
 	0 row(s) in 0.4170 seconds
-
 	=> Hbase::Table - test
 
 查看表
@@ -39,7 +38,6 @@ HBase Shell管理工具
 	TABLE
 	test
 	1 row(s) in 0.0180 seconds
-
 	=> [“test”]
 扫描表结构
 	hbase(main):002:0> describe 'test'

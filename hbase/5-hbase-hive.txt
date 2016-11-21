@@ -1,0 +1,57 @@
+Hive 集成 HBase 原理
+	Hive 与 HBase 架构
+	Hive 整合 HBase 后的架构
+	Hive 整合 HBase 使用场景
+Hive 与 HBase 架构
+	用户接口：包括 CLI Client、WEB UI
+	元数据存储：通常存储在关系型数据库中，例如：mysql、derby
+	解析器：解释器、编译器、优化器、执行器
+	Hadoop：用 HDFS 进行存储，利用MapReduce 进行计算
+
+Hive映射HBase表
+整合后的操作演示
+应用经验分享
+
+Storage Handlers
+存储handler：
+	这个存储处理程序被编译成一个独立模块： hive-hbase-handler-x.y.z.jar
+	必须与guava、zookeeper的jar包被hive的客户端程序识别到
+	通过—auxpath指定
+使用源代码编译环境的命令行，连接到一个单结点的HBase server：
+	$HIVE_SRC/build/dist/bin/hive \
+	--auxpath \
+	$HIVE_SRC/build/dist/lib/hive-hbase-handler-0.9.0.jar,\
+	$HIVE_SRC/build/dist/lib/hbase-0.92.0.jar,\
+	$HIVE_SRC/build/dist/lib/zookeeper-3.3.4.jar,\
+	$HIVE_SRC/build/dist/lib/guava-r09.jar \
+	--hiveconf hbase.master=hbase01.jxky.com:60000
+注意：jar包的位置在hive 0.9.0版本以后发生了变化注意，需要改变命令行中jar包的位置
+Hive 启动方式二（推荐）：
+	1）拷贝 HBase lib目录下所有文件到 Hive lib中
+	2）直接启动 Hive ：
+		a）cd $HIVE_HOME
+		b）bin/hive
+Hive集成HBase可以有效利用HBase数据库的存储特性，如行更新和列索引等
+Hive表与HBase表之间需要建立映射关系
+每一个在Hive表中的域都存在于HBase中,而在Hive表中不需要包含所有HBase中的列
+create table short_urls(short_url string,url string,hit_count int,props map<string,string>_
+with serdeproperties ("hbase.columns.mapping"=":key,u:url,s:hits,p:");
+create table hbase_table_1(key int, value string)
+stored by "org.apache.hadoop.hive.hbase.HBaseStorageHandler"
+with serdeproperties("hbase.columns.mapping"=":key,cf1:val")
+tblproperties("hbase.table.name"="xyz");
+
+create table poke(foo int, bar string) row format delimited fields terminated by '\t';
+1	lisi
+2	wangwu
+load data local inpath'/home/hadoop/Documents/workspaces/idea/myHbase/datafile/poke' into table poke ;
+insert overwrite table hbase_table_1 select * from poke;
+select * from hbase_table_1;
+scan 'xyz';
+drop table hbase_table_1;
+
+create external table hbase_table_2(key string,name string)
+stored by "org.apache.hadoop.hive.hbase.HBaseStorageHandler"
+with serdeproperties("hbase.columns.mapping"="info:value")
+tblproperties("hbase.table.name"="user");
+drop table hbase_table_2;

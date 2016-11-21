@@ -1,12 +1,15 @@
 hbase 报错gc wal.FSHLog: Error while AsyncSyncer sync, request close of hlog YouAr
 一个很常见的报错log
-2015-03-05 03:10:35,461 FATAL [regionserver60020-WAL.AsyncSyncer0] wal.FSHLog: Error while AsyncSyncer sync, request close of hlog
+	2015-03-05 03:10:35,461 FATAL [regionserver60020-WAL.AsyncSyncer0] wal.FSHLog:
+	Error while AsyncSyncer sync, request close of hlog
 
 再往前边看看会返现gc警告
-2015-03-05 03:08:25,092 DEBUG [LruStats #0] hfile.LruBlockCache: Total=12.67 GB, free=125.43 MB, max=12.79 GB, blocks=203552, accesses=65532282, hits=33745890, hitRatio=51.50%, , cachingAccesses=3
-4739624, cachingHits=28976512, cachingHitsRatio=83.41%, evictions=536, evicted=5540234, evictedPerRun=10336.2578125
-//hbase.apache.org/book.html#trouble.rs.runtime.zkexpired
-/hbase.ap
+	2015-03-05 03:08:25,092 DEBUG [LruStats #0] hfile.LruBlockCache:
+	Total=12.67 GB, free=125.43 MB, max=12.79 GB, blocks=203552, accesses=65532282, hits=33745890, hitRatio=51.50%, ,
+	cachingAccesses=34739624, cachingHits=28976512, cachingHitsRatio=83.41%,
+	evictions=536, evicted=5540234, evictedPerRun=10336.2578125
+	//hbase.apache.org/book.html#trouble.rs.runtime.zkexpired
+	/hbase.ap
 总结原因：
 	gc时间过长（可能是gc问题，cpu问题使得gc得不到线程执行）
 	使得zk认为rs已经dead，
@@ -16,9 +19,8 @@ hbase 报错gc wal.FSHLog: Error while AsyncSyncer sync, request close of hlog Y
 	dead rs从zk得知自己dead了，就close了
 
 我的解决方法：
-
 	设置SurvivorRatio=2，增大survivor大小，减少老生带增加速度，减少cms触发几率
 	设置-XX:CMSInitiatingOccupancyFraction=60，提早cms进行老生带的回收，减少cms的时间
 	这样避免老生带在回收的时候占满，触发full gc（避免promotion failed和concurrent mode failure）
-
+	具体设置:
     export HBASE_REGIONSERVER_OPTS="-Xmx33g -Xms33g -Xmn2g -XX:SurvivorRatio=1 -XX:PermSize=128M -XX:MaxPermSize=128M -Djava.net.preferIPv4Stack=true -Djava.net.preferIPv6Addresses=false -XX:MaxTenuringThreshold=15 -XX:+CMSParallelRemarkEnabled -XX:+UseFastAccessorMethods -XX:+UseParNewGC -XX:+UseConcMarkSweepGC -XX:CMSInitiatingOccupancyFraction=60 -XX:+UseCMSInitiatingOccupancyOnly -XX:+UseCMSCompactAtFullCollection -XX:CMSFullGCsBeforeCompaction=0 -XX:+HeapDumpOnOutOfMemoryError -verbose:gc -XX:+PrintGCDetails -XX:+PrintGCDateStamps -XX:+PrintGCTimeStamps -XX:+PrintTenuringDistribution -Xloggc:$HBASE_HOME/hbase-0.98.1-cdh5.1.0/logs/gc-hbase.log"
