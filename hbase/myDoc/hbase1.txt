@@ -1,0 +1,225 @@
+HBase概述
+HBase物理模型
+HBase数据模型
+HBase基本架构
+HBase应用举例
+总结
+
+excel
+员工名称		地址		工资
+			省份,城市,街道
+------------------------------
+Hbase简介
+	非关系型分布式数据库(NoSQL),参考google的BigTable建模,
+	Java语言编程,Apache顶级项目,
+	运行在HDFS之上,容错地存储来量稀疏数据.
+	HBase将数据按照表,行和列进行存储.分布式列存储系统;用于海量结构化数据存储
+
+	Hbase在列上实现压缩算法,内存操作.Hbase表能作为MR输出和输入,
+	可以通过Java API访问,也可以通过REST,Avro或者Thrift的API访问
+	不能直接取代SQL数据库.
+Hbase与HDFS对比
+	好的容错性和扩展性,都可以扩展到成百上千节点;
+	HDFS适合批处理场景;不支持数据随机查询;不适合增量数据处理;不支持数据更新.
+Hbase表的特点
+	大:一个表可以有数十亿行,上百万列;
+	无模式:每行都有一个可排序的主键和任意对的列,列可以根据需要动态的增加,同一张表中不同的行可以有截然不同的列;
+	面向列:面向列(族)的存储和权限控制,列(族)独立检索;
+	稀疏:对于空(null)的列,并不占用该存储空间,表可以设计的非常稀疏;
+	数据多版本:每个单元中的数据可有多个版本,默认情况下版本号自动分配,是单元插入式的时间戳;
+	数据类型单一:Hbase中的数据都是字符串,没有类型;
+
+
+=========================================================
+Hbase逻辑视图
+概念:
+	行键Row Key:每一行有一个Row key(行键),相当于是一个索引,天然建立这个索引,通过Row key快速找到所在的列并提取出来.
+	Row Key可以是任意字符串(最大长度是 64KB，实际应用中长度一般为 10-100bytes)，在hbase内部，row key保存为字节数组。
+存储时，数据按照Row key的字典序(byte order)排序存储。设计key时，要充分排序存储这个特性，将经常一起读取的行存储放到一起。(位置相关性)
+注意：
+字典序对int排序的结果是1,10,100,11,12,13,14,15,16,17,18,19,2,20,21,…,9,91,92,93,94,95,96,97,98,99。要保持整形的自然序，行键必须用0作左填充。
+行的一次读写是原子操作 (不论一次读写多少列)。这个设计决策能够使用户很容易的理解程序在对同一个行进行并发更新操作时的行为。
+-----------------------------------
+	列族 Column Family:每一行分为很多的Column Family,每个Column Family由存在很多的列,这里就有一个Value
+	hbase表中的每个列，都归属与某个列族。列族是表的chema的一部分(而列不是)，必须在使用表之前定义。列名都以列族作为前缀。例如courses:history ， courses:math 都属于 courses 这个列族。
+访问控制、磁盘和内存的使用统计都是在列族层面进行的。实际应用中，列族上的控制权限能帮助我们管理不同类型的应用：我们允许一些应用可以添加新的基本数 据、一些应用可以读取基本数据并创建继承的列族、一些应用则只允许浏览数据（甚至可能因为隐私的原因不能浏览所有数据）。
+---------------------------------------
+	Value:是一个单元,单元里可能有很多的值,这些值通过时间戳区别
+	HBase中通过row和columns确定的为一个存贮单元称为cell。由{row key, column( =<family> + <label>), version} 唯一确定的单元。cell中的数据是没有类型的，全部是字节码形式存贮。
+--------------------------------------
+	时间戳 timestamp
+每个cell都保存着同一份数据的多个版本。版本通过时间戳来索引。时间戳的类型是 64位整型。时间戳可以由hbase(在数据写入时自动 )赋值，此时时间戳是精确到毫秒的当前系统时间。时间戳也可以由客户显式赋值。如果应用程序要避免数据版本冲突，就必须自己生成具有唯一性的时间戳。每个cell中，不同版本的数据按照时间倒序排序，即最新的数据排在最前面。
+为了避免数据存在过多版本造成的的管理 (包括存贮和索引)负担，hbase提供了两种数据版本回收方式。一是保存数据的最后n个版本，二是保存最近一段时间内的版本（比如最近七天）。用户可以针对每个列族进行设置。
+---------------------------------
+逻辑:
+	通过Rowkey找到对应行,在这行中找到Column Family,再通过col取出对应的value;
+	(列与列之间用”,”隔开,列中的列名和数值用”:”分开,列与值是以k/v对形式存放
+	Rowkey-->Column Family-->col-->value
+关系:
+Rowkey与Column Family
+	每行一个Rowkey,每条记录划分若干个Column Family
+Row Key
+	每一个RowKey的Version Number是唯一的,默认值为系统时间戳,类型为Long
+
+	1. Hbase schema可以有多个Table(在Hbase中没有Table的概念,这里指的是多个Column Family组成的类似表)每个表可由多个Column Family组成
+	2. Hbase 可以有(动态)Dynamic Column
+	3. 列名称是编码在cell中的,不同的cell可以拥有不同的类
+	4. Version Number可由用户提供
+	5. 无需以递增的顺序插入,每行的rowkey必须是唯一的
+	6. Table可能非常稀疏
+	7. 很多cell可以是空的
+Hbase支持的操作
+	1. 所有操作均是基于rowkey的;
+	2. 支持CRUD(Create, Read, Update 和 Delete)和Scan;
+	3. 单行操作
+		1) Put
+		2) Get
+		3) Scan
+	4. 多行操作
+		1) Scan
+		2) MultiPut
+	5. 没有内置join操作,可使用MapReduce解决.
+
+物理模型
+-----------------------------------------
+每个column family存储在HDFS上的一个单独文件中;
+Key和Version number在每个column family中均由一份.
+物理存储
+	1. Table中的所有行都按照row key的字典序排列
+	2. Table在行的方向上分割为多个Region(范围区域),
+	3. Region按照大小分割,每个表开始只有一个region,随着数据增多,region不断增大,当增大到一个阈值的时候,region就会等分为两个新的region,之后会有越来越多的region
+	而这个阀值就是storefile 的设定大小(参数:hbase.hregion.max.filesize 新版本默认10G) ,在第一次分裂region之前，所有加载的数据都放在原始区域的那台服务器上，随着表的变大
+	4. Region是Hbase中分布式存储和负载均衡的最小单元,通过那个的Region分布到不同RegionServer上.每个Region是一个整体,不能拆开存储
+	5. Region虽然是分布式存储的最小单元,但并不是存储的最小单元
+		1) Region由一个或多个Store组成,每个store保存一个columns family;
+		2) 每个Store又由一个memStore和0至多个StoreFile组成;
+		3) memStore存储在内存中,StoreFile存储在HDFS上.
+Hbase Regions
+	自动水平分区,row的子集,第一行(include),最后一行(exclude)
+	每张表至少一个region,增长到阈值,切割成两个相同的region
+	row update是原子性的
+
+	region是属于单一的regionserver，除非这个regionserver 宕机，或者其它方式挂掉，再或者执行balance时，才可能会将这部分region的信息转移到其它机器上
+	这也就是 为什么region比较少的时候，导致region分配不均，总是分派到少数的节点上，读写并发效果不显著，这就是hbase 读写效率比较低的原因。
+
+
+Hbase架构
+============================================================
+Hbase运行在hadoop的HDFS之上,里面所有的文件除了内存中存储的数据之外都存储在HDFS中.HBase本身角度上有四个重要组件
+------------------------------
+1. Client:包含访问Hbase 的接口,并维护cache来加快对HBase的访问
+2. Zookeeper:
+	保证任何时候,集群只有一个master
+	存储所有Region的寻址入口
+	实时监控Region server的上线和下线信息,并实时通知给Master
+	存储HBase的schema和table元数据
+	Zookeeper作用
+		HBase依赖Zookeeper
+		默认情况下,HBase管理Zookeeper实例;比如,启动或者停止Zookeeper
+		Master与RegionServers启动是会向Zookeeper注册
+		Zookeeper的引入是的Master不在是单点故障
+	详细机制:
+		Zookeeper简单说就是协调和服务于分布式应用程序的服务。
+		Zookeeper Quorum 中除了存储-ROOT-表的地址和Hmaster 的地址，HRegionServer 也以Ephemeral的方式注册到Zookeeper中，这样Hmaster就可以随时感知到各个RegionServer的健康状况，还有就是Zookeeper通过Election的方式 避免了Hmaster的单点问题。
+		保证任何时候，集群中只有一个master
+		存贮所有Region的寻址入口。
+		实时监控RegionServer的状态，将Region server的上线和下线信息实时通知给Master
+		存储Hbase的schema,包括有哪些table，每个table有哪些column family 
+-------------------------------------------
+3. HMaster:
+	为Region server分配region
+	负责Region server的负载均衡
+	发现失效的Region server并重新分配其上的region
+	管理用户对table的增,删,改,查操作
+总结HMaster 的主要任务：1、HTable DDL 操作 2、Region 分配工作。 其余的基本上都是client 和RegionServer打交道来完成的。
+-----------------------------------------
+4. HRegionServer:
+	Region server维护region,处理这些region的IO请求
+		携带0~n个region
+		负责Clinet的读写请求
+	Region server负责切分在运行过程中便的过大的region
+		通知master新的子分区
+		管理offline的父代region以及对其的替换
+	下面对HRegionServer的内部结构做一个简单描述:
+            HRegionServer 内部管理了一系列的HRegion对象，HRegion和Region是一回事吗？其实HRegion对应了Table中的一个Region，HRegion是对其进行的封装。每个HRegion中由多个HStore组成。
+            HStore则对应Table中的Column Family，不论此Column Family 内部有多少数据，都会创建一个新的HStore,因此将相同属性的数据放进相同的Column Family 很有必要，避免一次访问，访问多个HStore，性能低下。而HStore 则是HBase的核心的存储单元了，而HStore 由两个部分组成，一时MemStore,再就是StoreFile 
+            MemStore 是Sorted Memory Buffer ,client 写入的数据先写入MemStore,当达到MemStore的阀值时，将其Flush 成为一个StoreFile(HFile),StoreFile 则是存储在硬盘上的文件，具体这个阀值时多少？
+            hbase.hregion.memstore.flush.size  这个参数表示每个MemStore的大小，当然系统默认是134217728 bytes 也就是128M，这个参数需考虑每个RS负担的Region个数。
+            这个参数的作用是当单个Region内所有的memstore大小总和超过指定值时，flush该region的所有memstore。RegionServer的flush是通过将请求添加一个队列，模拟生产消费模式来异步处理的。那这里就有一个问题，当队列来不及消费，产生大量积压请求时，可能会导致内存陡增，最坏的情况是触发OOM。
+            上面说到，当该Region下所有的MemStore 之和超过指定值时，就触发flush，而前面又说了在一个Region下 每个Column Family 一个HStore ,那多个Column Family 这样问题出来了，如果一个HStore数据量大，而另外一个HStore 仅有几条数据，会同时 flush吗?  对，这就说明了一个问题，在Hbase表设计的时候尽量设置单一ColumnFamily的表，否则Hbase不能很好的处理上面类似的问题。
+             除了上面的参数还有两个参数
+             hbase.regionserver.global.memstore.upperLimit 默认 0.4 也就是40%
+             为了防止MemStore占用总内存过大，当RegionServer所有Region达到总heap内存的40%，Hbase会Block所有的更新，来flush所有的MemStore,并释放MemStore占用的内存
+             hbase.regionserver.global.memstore.lowerLimit 默认是 0.35 也就是 35%
+             这个参数表示，当该RegionServer 下所有的MemStore达到 总Heap 内存的35%时，触发flush个别占用内存大的MemStore,这是会做block，写更新还是会收影响。
+-----------------------------------------
+5. Region:存储MemStore,包括0个到多个StoreFile,StoreFile的格式是Hfile,所有的StoreFile都以Hfile的格式存储在HDFS上
+Client访问Resion,进行数据读写,这是与Zookeeper进行交互,通过ZK拿到数据的位置,HRegionServer上拿到数据, 所以如果HMaster挂掉,Client仍然可以存取数据, 从一定程度上说,HMaster没有单点故障,但当HMaster挂掉后, HRegionServer需要恢复,如 HRegionServer的Region增大到一定阈值后,需要HMaster将数据迁移到另外的一个节点上,这需要一定的时间,这时候将不能迁移,HMaster恢复后才能迁移
+Client读写:Client-->ZK-->ResionDir-->HRegionServer
+定位Region需要寻找RegionServer
+Hbase元数据表
+	Zookeeper中记录了-ROOT-表的location
+	-ROOT-表包含.META.表所在的region列表,该表只会有一个Region;
+	.META.表包含所有的用户空间region列表,以及REgionServer的服务器地址
+HBase内部维护着两个元数据表，分别是-ROOT- 和 .META. 表 他们分别维护者当前集群所有region 的列表、状态和位置。-ROOT-表包含.META.表的region 列表，因为.META.表可能会因为超过region的大小而进行分裂，所以-ROOT-才会保存.META.表的region索引，-ROOT-表是不会分裂的。而.META. 表中则包含所有用户region（user-space region）的列表。表中的项使用region 名作为键。region名由所属的表名、region的起始行、创建的时间 以及对其整体进行MD5 hash值.
+当region 进行split、disable、enable、drop或者 balance 导致region重新分配 或者由于regionserver 挂掉而导致重新分配region时，.META.表的数据会进行及时的更新，这样才能保证根据meta访问到的表是存在的。
+	访问流程
+		客户端client 首先连接到ZooKeeper 这是就要先查找-ROOT-的位置。
+		然后client通过-ROOT- 获取所请求行所在范围 所属的.META.region的位置。
+		client接着查找.META.region来获取user-space region 所在的节点和位置。
+		接着client 就可以直接和管理者那个region的RegionServer 进行交互。
+	Zookeeper-->-ROOT--->.META. -->用户表(然后才可以读取某一个K/V对)
+	注：
+ 	Client只有在第一次查找时候,才经过以上四步定位,查找以后,会将root表和meta表的信息缓存到本地,当再次查找时,Client在本地的表中查找
+ 	每个行操作可能要访问三次远程节点，为了节省这些代价，client会缓存他们遍历-ROOT-和.META. 的位置以及user-space region的开始行和结束行，这样每次访问就不会再从表中去查询了
+ 	但如果变动了怎么办？却是存在这个问题，这样的话client 会出现错误，那此时region毫无疑问是移动了，这时，client 会再次从.META.查找region 的新位置并再次将其放入到缓存中去，周而复始。同样道理如果.META.的region移动了，client 也才会去-ROOT-表查询.META.region的新位置。
+ 	不过由于hbase 设计的问题，所以在MapReduce过程中如果用到hbase时，访问缓存中的region就会出现错误，出现错误后，缓存更新，task再次尝试就能正确通过,下面是我们常遇到的bug：
+	ERROR org.apache.hadoop.hbase.regionserver.HRegionServer: Closing scanner ...
+	org.apache.hadoop.hbase.NotServingRegionException: Region is not online:
+	基于这种情况会时常发生， 建议不要让task 尝试的次数改为1，这样会导致很多job fail,这两个参数分别是：
+	mapred.map.max.attempts map 任务最大尝试次数 默认是4
+	mapred.reduce.max.attempts reduce 任务最大尝试次数 默认是4
+
+	     8、HBase数据存储
+          1、HBase中所有的数据都是存放在Hadoop HDFS文件系统上，而这部分文件包括两种文件类型：
+               一是HFile Hadoop的二进制文件，实际上是StoreFile对HFile 做了一个轻量级包装，所以StoreFile 的底层就是Hfile。
+               二是HLog File 也就是HBase的WAL (Write Ahead Log)，实际上在hadoop内部以Sequence File 的形式存在。它是一个由二进制序列化过的key/value的字节流组成的文本存储文件。
+               下面是HFile 的存储格式，也是官方的一个图。
+Write-Ahead-Log(WAL)
+	Client向HBase中进行增删改查操作时候,这些操作不是直接在某一个HRegion上操作,比如插入某条数据,是先记录到一条日志中,确保日志成功后,再写到HRegion.这样确保如果直接在HRegion上写,中途突然HRegion挂掉数据丢失的情况
+-------------------------------------------------
+
+3.HBase容错性
+	1. Master容错:Zookeeper重新选择一个新的Master;无Master过程中,数据读取扔照常进行;region切分,负载均衡等无法进行;
+	2. RegionServer容错:定时向Zookeeper汇报心跳,如果一段时间未出现心跳,Master将该RegionServer上的Region重新分配到其他RegionServer上;失效服务器上”预写”(WAL)日志由主服务器进行分割并派送给新的RegionServer
+	3. Zookeeper容错:Zookeeper是一个可靠的服务,一般配置3或5个Zookeeper实例
+
+ 
+3.7 何时使用HBase
+	1. 需要对数据进行随机读操作或者随机写操作;
+	2. 大数据上高并发操作,比如每秒对PB级数据进行上千次操作;
+	3. 读写访问均是非常简单的操作.
+Hbase在淘宝的应用
+	1. 淘宝实时传输平台
+		数据每天TB级的数据写入应用
+		就的存储模型(内存+硬盘)
+		发布和订阅的使用场景
+	2. 淘宝指数
+		倒排索引的属性查询(RedisHbase)
+		实时/性能
+		客户端Join
+		高冗余,每行百兆级的数据应用
+
+	3. 交易历史记录查询系统
+		百亿行数据表,千亿级二级索引表
+		每天千万行更新
+		查询场景简单,检索条件较少
+		关系型数据库所带来的问题
+		基于userli+time+id rowkey设计
+		成绩考虑
+	Hbase在facebook应拥--消息系统
+		Facebook创建了Cassandra,最后却弃用Cassandra,是有了HBase;
+		消息系统(聊天系统,邮件系统等)需求:
+		一个较小的临时数据集,是经常变化的
+		一个不断增加的数据集,是很少被访问的
+		Hbase同时解决了以上问题

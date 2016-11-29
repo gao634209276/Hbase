@@ -1,0 +1,86 @@
+复习HBase构成
+2. Zookeeper:
+	保证任何时候,集群只有一个master
+	存储所有Region的寻址入口
+	实时监控Region server的上线和下线信息,并实时通知给Master
+	存储HBase的schema和table元数据
+	Zookeeper作用
+		HBase依赖Zookeeper
+		默认情况下,HBase管理Zookeeper实例;比如,启动或者停止Zookeeper
+		Master与RegionServers启动是会向Zookeeper注册
+		Zookeeper的引入是的Master不在是单点故障
+	详细机制:
+		Zookeeper简单说就是协调和服务于分布式应用程序的服务。
+		Zookeeper Quorum 中除了存储-ROOT-表的地址和Hmaster 的地址，HRegionServer 也以Ephemeral的方式注册到Zookeeper中，这样Hmaster就可以随时感知到各个RegionServer的健康状况，还有就是Zookeeper通过Election的方式 避免了Hmaster的单点问题。
+		保证任何时候，集群中只有一个master
+		存贮所有Region的寻址入口。
+		实时监控RegionServer的状态，将Region server的上线和下线信息实时通知给Master
+		存储Hbase的schema,包括有哪些table，每个table有哪些column family 
+-------------------------------------------
+使用自带的zookeeper,通过hbase zkcli进入交互界面
+[zk: hadoop:2181,hadoop1:2181,hadoop2:2181(CONNECTED) 0] ls /
+[hbase, zookeeper]
+查看hbase节点下的子节点 ls /hbase
+[meta-region-server, backup-masters, table, draining, region-in-transition, table-lock, running, master, namespace, hbaseid, online-snapshot, replication, splitWAL, recovering-regions, rs, flush-table-proc]
+查看hbase子节点regionserver: ls /hbase/rs
+[hadoop1,16020,1465548769070, hadoop2,16020,1465548769225]
+其中分隔符为空格,查看hadoop1的rs:get /hbase/rs/hadoop1,16020,1465548769070
+有一些非utf8字符
+�regionserver:16020~Z�A���PBU�}�
+1.2.1(git://asf-dev/home/busbey/projects/hbase(8d8a7107dc4ccbf36a92f64675dc60392f85c015"busbey*Wed Mar 30 11:19:21 CDT 20162 f4bb4a14bb4e0b72b46f729dae98a772
+#创建id
+cZxid = 0x100000029
+#创建时间
+ctime = Fri Jun 10 16:52:51 CST 2016
+mZxid = 0x100000029
+mtime = Fri Jun 10 16:52:51 CST 2016
+pZxid = 0x100000029
+cversion = 0
+dataVersion = 0
+aclVersion = 0
+#临时性的Owner
+ephemeralOwner = 0x15539837aa00002
+dataLength = 204
+numChildren = 0
+查看hbase节点下的master,backup-masters,table等
+查看get /hbase/table/hbase:meta,/hbase/table/
+使用hbase shell查看信息
+echo "describe 'test'" | hbase shell
+echo "describe 'hbase:meta'" | hbase shell
+echo "scan 'hbase:meta'" | hbase shell
+echo "scan 'hbase:namespace'" | hbase shell
+echo "help 'create_namespace'" | hbase shell
+echo "create_namespace 'ns_it18zhang'" | hbase shell
+echo "scan 'hbase:namespace'" | hbase shell
+hbase(main):003:0> list_namespace
+NAMESPACE
+default
+hbase
+ns_it18zhang
+3 row(s) in 0.2230 seconds
+hbase(main):005:0* list_namespace_tables 'default'
+TABLE
+test
+test2
+test3
+test4
+4 row(s) in 0.0330 seconds
+drop_namespace 'ns_it18zhang'
+
+===================================
+hbase:meta的信息
+echo "scan 'hbase:meta'" | hbase shell
+hbase(main):012:0> scan 'hbase:meta'
+ROW                                                  COLUMN+CELL
+ hbase:namespace,,1465548776200.527576d6a95d3f517f9832fd15fff06a. column=info:regioninfo, timestamp=1465548777046, value={ENCODED => 527576d6a95d3f517f9832fd15fff06a, NAME => 'hbase:namespace,,1465548776200.527576d6a95d3f517f9832fd15fff06a.', STARTKEY => '', ENDKEY =>''}
+
+ hbase:namespace,,1465548776200.527576d6a95d3f517f9832fd15fff06a. column=info:seqnumDuringOpen, timestamp=1465548777613, value=\x00\x00\x00\x00\x00\x00\x00\x02
+ hbase:namespace,,1465548776200.527576d6a95d3f517f9832fd15fff06a. column=info:server, timestamp=1465548777613, value=hadoop1:16020
+ hbase:namespace,,1465548776200.527576d6a95d3f517f9832fd15fff06a. column=info:serverstartcode, timestamp=1465548777613, value=1465548769070
+
+  test3,,1465553558842.9dc01f47a414cef0ae28aabbc72d6782. column=info:regioninfo, timestamp=1465553559494, value={ENCODED => 9dc01f47a414cef0ae28aabbc72d6782, NAME => 'test3,,1465553558842.9dc01f47a414cef0ae28aabbc72d6782.', STARTKEY => '', ENDKEY =>''}
+
+ test3,,1465553558842.9dc01f47a414cef0ae28aabbc72d6782. column=info:seqnumDuringOpen, timestamp=1465553559731, value=\x00\x00\x00\x00\x00\x00\x00\x02
+ test3,,1465553558842.9dc01f47a414cef0ae28aabbc72d6782. column=info:server, timestamp=1465553559731, value=hadoop1:16020
+ test3,,1465553558842.9dc01f47a414cef0ae28aabbc72d6782. column=info:serverstartcode, timestamp=1465553559731, value=1465548769070
+从hbase:meta表中可以看到其中保存了用户创建的表,以及namespace表,以test3为例子,在hbase:meta表中,

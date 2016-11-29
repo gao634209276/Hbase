@@ -1,0 +1,298 @@
+1.a1 192.168.9.1  (master)
+  a2 192.168.9.2  (slave1)
+  a3 192.168.9.3  (slave2)
+  修改/etc/hosts
+
+2.3台机器 创建hadoop 用户
+hadoop 密码:123
+
+3.安装JDK (3台都安装)
+[root@a1 ~]# chmod 777 jdk-6u38-ea-bin-b04-linux-i586-31_oct_2012-rpm.bin
+[root@a1 ~]# ./jdk-6u38-ea-bin-b04-linux-i586-31_oct_2012-rpm.bin
+[root@a1 ~]# cd /usr/java/jdk1.6.0_38/
+
+[root@a1 jdk]# vi /etc/profile
+export JAVA_HOME=/usr/java/jdk1.6.0_38
+export JAVA_BIN=/usr/java/jdk1.6.0_38/bin
+export PATH=$PATH:$JAVA_HOME/bin
+export CLASSPATH=.:$JAVA_HOME/lib/dt.jar:$JAVA_HOME/lib/tools.jar
+export JAVA_HOME JAVA_BIN PATH CLASSPATH
+
+重启你的系统 或 source /etc/profile
+
+[root@a1 ~]#  /usr/java/jdk1.6.0_38/bin/java -version
+
+java version "1.6.0_38-ea"
+Java(TM) SE Runtime Environment (build 1.6.0_38-ea-b04)
+Java HotSpot(TM) Client VM (build 20.13-b02, mixed mode, sharing)
+
+4.安装hadoop (3台都安)
+
+[root@a1 ~]# tar zxvf hadoop-0.20.2-cdh3u5.tar.gz -C /usr/local
+
+编辑hadoop 配置文件
+[root@a1 ~]# cd /usr/local/hadoop-0.20.2-cdh3u5/conf/
+[root@a1 conf]# vi hadoop-env.sh
+添加
+export JAVA_HOME=/usr/java/jdk1.6.0_38
+
+设置namenode启动端口
+[root@a1 conf]# vi core-site.xml
+添加
+<configuration>
+<property>
+<name>fs.default.name</name>
+<value>hdfs://a1:9000</value>
+</property>
+
+<property>
+<name>hadoop.tmp.dir</name>
+<value>/home/hadoop/hadoop-0.20.2-cdh3u5/tmp</value>
+</property>
+</configuration>
+
+mkdir tmp 创建tmp目录
+
+设置datanode节点数为2
+[root@a1 conf]# vi hdfs-site.xml
+添加
+<configuration>
+<property>
+<name>dfs.replication</name>
+<value>2</value>
+</property>
+</configuration>
+
+设置jobtracker端口
+[root@a1 conf]# vim mapred-site.xml
+
+<configuration>
+<property>
+<name>mapred.job.tracker</name>
+<value>h91:9001</value>
+</property>
+</configuration>
+
+[root@a1 conf]# vi masters
+改为  a1(主机名)
+
+[root@a1 conf]# vi slaves
+改为
+a2
+a3
+
+拷贝到其他两个节点
+[root@a1 conf]# cd /usr/local/
+[root@a1 local]# scp -r ./hadoop-0.20.2-cdh3u5/ a2:/usr/local/
+[root@a1 local]# scp -r ./hadoop-0.20.2-cdh3u5/ a3:/usr/local/
+
+在所有节点上执行以下操作，把/usr/local/hadoop-0.20.2-cdh3u5的所有者，所有者组改为hadoop并su成该用户
+[root@a1 ~]# chown hadoop.hadoop /usr/local/hadoop-0.20.2-cdh3u5/ -R
+[root@a2 ~]# chown hadoop.hadoop /usr/local/hadoop-0.20.2-cdh3u5/ -R
+[root@a3 ~]# chown hadoop.hadoop /usr/local/hadoop-0.20.2-cdh3u5/ -R
+
+[root@a1 ~]# su - hadoop
+[root@a2 ~]# su - hadoop
+[root@a3 ~]# su - hadoop
+
+所有节点上创建密钥
+[hadoop@a1 ~]$ ssh-keygen -t rsa
+[hadoop@a2 ~]$ ssh-keygen -t rsa
+[hadoop@a3 ~]$ ssh-keygen -t rsa
+
+[hadoop@a1 ~]$ ssh-copy-id -i /home/hadoop/.ssh/id_rsa.pub a1
+[hadoop@a1 ~]$ ssh-copy-id -i /home/hadoop/.ssh/id_rsa.pub a2
+[hadoop@a1 ~]$ ssh-copy-id -i /home/hadoop/.ssh/id_rsa.pub a3
+
+[hadoop@a2 ~]$ ssh-copy-id -i /home/hadoop/.ssh/id_rsa.pub a1
+[hadoop@a2 ~]$ ssh-copy-id -i /home/hadoop/.ssh/id_rsa.pub a2
+[hadoop@a2 ~]$ ssh-copy-id -i /home/hadoop/.ssh/id_rsa.pub a3
+
+[hadoop@a3 ~]$ ssh-copy-id -i /home/hadoop/.ssh/id_rsa.pub a1
+[hadoop@a3 ~]$ ssh-copy-id -i /home/hadoop/.ssh/id_rsa.pub a2
+[hadoop@a3 ~]$ ssh-copy-id -i /home/hadoop/.ssh/id_rsa.pub a3
+
+
+格式化 namenode
+[hadoop@a1 ~]$ cd /usr/local/hadoop-0.20.2-cdh3u5/
+[hadoop@a1 hadoop-0.20.2-cdh3u5]$ bin/hadoop namenode -format
+
+开启
+[hadoop@a1 hadoop-0.20.2-cdh3u5]$ bin/start-all.sh
+
+在所有节点查看进程状态验证启动
+[hadoop@a1 hadoop-0.20.2-cdh3u5]$ jps
+8602 JobTracker
+8364 NameNode
+8527 SecondaryNameNode
+8673 Jps
+
+[hadoop@a2 hadoop-0.20.2-cdh3u5]$ jps
+10806 Jps
+10719 TaskTracker
+10610 DataNode
+
+[hadoop@a3 hadoop-0.20.2-cdh3u5]$ jps
+7605 Jps
+7515 TaskTracker
+7405 DataNode
+
+[hadoop@a1 hadoop-0.20.2-cdh3u5]$ bin/hadoop dfsadmin -report
+
+
+5.安装zookeeper
+[root@a1 hadoop]# tar zxvf zookeeper-3.3.5-cdh3u5.tar.gz -C /usr/local/
+[root@a1 hadoop]# cd /usr/local/zookeeper-3.3.5-cdh3u5/
+[root@a1 zookeeper-3.3.5-cdh3u5]# vi conf/zoo.cfg
+#server.0=localhost:2888:3888(注销这行)
+添加
+tickTime=2000
+initLimit=10
+syncLimit=5
+dataDir=/home/hadoop/zookeeper-3.3.5-cdh3u5/data
+dataLogDir=/home/hadoop/zookeeper-3.3.5-cdh3u5/log
+server.1=192.168.8.91:2888:3888
+server.2=192.168.8.92:2888:3888
+server.3=192.168.8.93:2888:3888
+
+
+***2888端口号是zookeeper服务之间通信的端口，而3888是zookeeper与其他应用程序通信的端口
+创建目录
+[root@a1 zookeeper-3.3.5-cdh3u5]# mkdir -pv data log
+
+拷贝给所有节点
+[root@a1 zookeeper-3.3.5-cdh3u5]# scp -r /usr/local/zookeeper-3.3.5-cdh3u5/ a2:/usr/local/
+[root@a1 zookeeper-3.3.5-cdh3u5]# scp -r /usr/local/zookeeper-3.3.5-cdh3u5/ a3:/usr/local/
+
+改变所有节点所有者
+[root@a1 zookeeper-3.3.5-cdh3u5]# chown hadoop.hadoop /usr/local/zookeeper-3.3.5-cdh3u5/ -R
+[root@a2 jdk1.6.0_38]# chown hadoop.hadoop /usr/local/zookeeper-3.3.5-cdh3u5/ -R
+[root@a3 hadoop-0.20.2-cdh3u5]# chown hadoop.hadoop /usr/local/zookeeper-3.3.5-cdh3u5/ -R
+
+切换用户为hadoop进行操作
+在节点1上设置myid为1，节点2上设置myid为2，节点3上设置myid为3
+[hadoop@a1 ~]$ vi /usr/local/zookeeper-3.3.5-cdh3u5/data/myid
+1
+
+[hadoop@a2 ~]$ vi /usr/local/zookeeper-3.3.5-cdh3u5/data/myid
+2
+
+[hadoop@a3 ~]$ vi /usr/local/zookeeper-3.3.5-cd0h3u5/data/myid
+3
+
+启动zookeeper (3个节点 都要配置)
+[hadoop@a1 ~]$ cd /usr/local/zookeeper-3.3.5-cdh3u5/bin/
+[hadoop@a1 bin]$ vi zkServer.sh
+
+编辑第100行
+ if [[ -f $ZOOPIDFILE ]]; then
+
+/var 目录有其他用户写权限
+[root@a1 ~]# chmod 777 /var
+
+[hadoop@a1 bin]$ ./zkServer.sh start
+JMX enabled by default
+Using config: /usr/local/zookeeper-3.3.5-cdh3u5/bin/../conf/zoo.cfg
+Starting zookeeper ... STARTED
+
+
+
+
+分别在3个节点上查看状态
+[hadoop@a1 bin]$ ./zkServer.sh status
+
+测试
+[hadoop@a1 bin]$ echo ruok |nc 192.168.8.91 2181
+imok
+
+
+安装hbase
+[root@a1 ~]# tar zxvf hbase-0.90.6-cdh3u5.tar.gz -C /usr/local/
+[root@a1 ~]# cd /usr/local/hbase-0.90.6-cdh3u5/
+[root@a1 hbase-0.90.6-cdh3u5]# vi conf/hbase-env.sh
+添加
+export JAVA_HOME="/usr/jdk1.7.0_25"
+export HBASE_MANAGES_ZK=false  //不使用自带的zookeeper
+
+[root@a1 hbase-0.90.6-cdh3u5]# vi  conf/hbase-site.xml
+替换为
+<?xml version="1.0"?>
+<?xml-stylesheet type="text/xsl" href="configuration.xsl"?>
+<configuration>
+<property>
+<name>hbase.rootdir</name>
+<value>hdfs://h91:9000/hbase</value>
+</property>
+<property>
+<name>hbase.cluster.distributed</name>
+<value>true</value>
+</property>
+<property>
+<name>hbase.zookeeper.quorum</name>
+<value>h91,h92,h93</value>
+</property>
+<property>
+<name>hbase.zookeeper.property.dataDir</name>
+<value>/home/hadoop/hbase-0.90.6-cdh3u5/data</value>
+</property>
+<property>
+    <name>hbase.tmp.dir</name>
+    <value>/home/hadoop/hbase-0.90.6-cdh3u5/tmp</value>
+</property>
+
+</configuration>
+
+
+[hadoop@h91 hbase-0.90.6-cdh3u5]$ mkdir data
+[hadoop@h91 hbase-0.90.6-cdh3u5]$ mkdir tmp
+
+[root@a1 hbase-0.90.6-cdh3u5]# vi conf/regionservers
+h92
+h93
+
+拷贝给其他两个节点
+[root@a1 hbase-0.90.6-cdh3u5]# scp -r /usr/local/hbase-0.90.6-cdh3u5/ a2:/usr/local/
+[root@a1 hbase-0.90.6-cdh3u5]# scp -r /usr/local/hbase-0.90.6-cdh3u5/ a3:/usr/local/
+
+3个节点改变所有者
+[root@a1 hbase-0.90.6-cdh3u5]# chown hadoop.hadoop /usr/local/hbase-0.90.6-cdh3u5/ -R
+[root@a2 ~]# chown hadoop.hadoop /usr/local/hbase-0.90.6-cdh3u5/ -R
+[root@a3 ~]# chown hadoop.hadoop /usr/local/hbase-0.90.6-cdh3u5/ -R
+
+切换用户hadoop
+[hadoop@a1 ~]$ cd /usr/local/hbase-0.90.6-cdh3u5/
+[hadoop@a1 hbase-0.90.6-cdh3u5]$ bin/start-hbase.sh
+
+[hadoop@a1 hbase-0.90.6-cdh3u5]$ jps
+8602 JobTracker
+10868 HMaster
+8364 NameNode
+11550 Jps
+8527 SecondaryNameNode
+9979 QuorumPeerMain
+
+
+[hadoop@a2 ~]$ jps
+10719 TaskTracker
+12142 Jps
+10610 DataNode
+11661 QuorumPeerMain
+12034 HRegionServer
+
+
+[hadoop@a3 ~]$ jps
+8819 HRegionServer
+7515 TaskTracker
+7405 DataNode
+8477 QuorumPeerMain
+8935 Jps
+
+
+
+
+
+
+
+
+
+

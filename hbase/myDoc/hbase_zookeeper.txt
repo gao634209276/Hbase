@@ -1,0 +1,76 @@
+##hbase-env.sh
+export JAVA_HOME=/usr/local/java/jdk1.7.0_80/
+export HBASE_CLASSPATH=/opt/modules/hadoop-2.7.1/etc/hadoop
+export HBASE_MANAGES_ZK=false
+创建对应data目录
+搭建在hdfs文件系统上
+##hbase-site.xml
+
+<configuration>
+  <property>
+    <name>hbase.rootdir</name>
+    <value>hdfs://hadoop:9000/user/hbase</value>
+  </property>
+  <property>
+    <name>hbase.cluster.distributed</name>
+    <value>true</value>
+  </property>
+  <property>
+    <name>hbase.zookeeper.property.clientPort</name>
+    <value>2181</value>
+  </property>
+  <property>
+    <name>hbase.zookeeper.quorum</name>
+    <value>hadoop,hadoop1,hadoop2</value>
+  </property>
+  <property>
+    <name>hbase.zookeeper.property.dataDir</name>
+    <value>/opt/modules/hbase-1.2.1/data</value>
+  </property>
+  <property>
+    <name>hbase.zookeeper.session.timeout</name>
+    <value>90000</value>
+  </property>
+  <property>
+    <name>hbase.tmp.dir</name>
+    <value>/opt/modules/hbase-1.2.1/data/tmp</value>
+  </property>
+</configuration>
+设置
+##regionservers
+hadoop1
+hadoop2
+配置zookeeper
+##zoo.cfg
+tickTime=2000
+initLimit=10
+syncLimit=5
+dataDir=/opt/modules/zookeeper-3.4.8/data
+dataLogDir=/opt/modules/zookeeper-3.4.8/logs
+clientPort=2181
+
+server.1=192.168.2.3:2888:3888
+server.2=192.168.2.10:2888:3888
+server.3=192.168.2.11:2888:3888
+创建data/myid编号1
+将hbase和zookeeper分别scp -r到其他节点
+并且修改zookeeper/data/myid编号2,3
+
+设置时间同步
+cp /usr/sharc/zoncinfo/Asia/Shanghai /etc/localtime
+更新时间
+ntpdate us.pool.net.org
+启动hadoop
+完事启动zookeeper
+分别每台机器启动
+bin/zkServer.sh start
+bin/zkServer.sh status查看状态
+启动hbase
+bin/start-hbase.sh
+hbase的shell方式
+hbase shell打开
+在hdfs上产看目录
+Web UI访问方式:
+hadoop:16010
+老版本是60010
+

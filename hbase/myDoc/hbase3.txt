@@ -1,0 +1,122 @@
+hbase API
+
+hbase类库
+// configuration
+Configuration conf = HBaseConfiguration.create();
+//admin
+HBaseAdmin admin = new HBaseAdmin(conf);
+//table
+TableName name = TableName.valueOf("test");
+//descrptor
+HTableDescriptor tdesc = new HTableDescriptor(name);
+//coulumn family desc
+HColumnDescriptor hcd = new HColumnDescriptor("data");
+tdesc.addFamily(hcd);
+admin.createTable(tdesc);
+运行:
+导出jar包, export HBASE_CLASSPATH=/opt/app/jar/hbase-create.jar
+然后执行hbase cn.it18zhang.hbase.HbaseApp
+或者
+// configuration
+Configuration conf = HBaseConfiguration.create();
+conf.set("hbase.zookeeper.property.clientPort", "2181");
+conf.set("hbase.zookeeper.quorum", "hadoop,hadoop1,hadoop2");
+//admin
+HBaseAdmin admin = (HBaseAdmin) conn.getAdmin();
+//table descrptor
+HTableDescriptor htd = new HTableDescriptor(TableName.valueOf("people"));
+//columnDescriptor desc
+HColumnDescriptor htd_info = new HColumnDescriptor("info");
+htd.addFamily(htd_info);
+htd.addFamily(new HColumnDescriptor("data"));
+htd_info.setMaxVersions(3);
+//create
+admin.createTable(htd);
+直接在eclipse上运行
+==================================
+新API
+		Configuration config = HBaseConfiguration.create();
+		Connection conn = ConnectionFactory.createConnection(config);
+		Admin admin = conn.getAdmin();
+
+		TableName tableName = TableName.valueOf("test");
+		conn.getTable(tableName);
+		//create
+		admin.createTable(desc);
+		//disable
+		admin.disableTable(tableName);
+		//drop table
+		admin.deleteTable(tableName);
+
+		Table table = (Table) conn.getTable(tableName);
+		//table.get(arg0, arg1);
+		//table.putAll(arg0);
+		ResultScanner rs = table.getScanner(scan);
+		for(Result r :rs ){
+			r.toString();
+		}
+
+		admin.deleteColumn(null, null);
+批量操作
+	private static Configuration conf = null;
+	private static Connection conn = null;
+	static{
+		try {
+			conf = HBaseConfiguration.create();
+			conn = ConnectionFactory.createConnection(conf);
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
+	public static void createTable(String name) throws IOException{
+		Admin admin = conn.getAdmin();
+		TableName tableName = TableName.valueOf(name);
+		if(admin.tableExists(tableName)){
+			admin.disableTable(tableName);
+			admin.deleteTable(tableName);
+		}
+		HTableDescriptor htd = new HTableDescriptor(tableName);
+		HColumnDescriptor hcd = new HColumnDescriptor("data");
+		htd.addFamily(hcd);
+		admin.createTable(htd);
+	}
+	public static void batchPut(int n) throws IOException{
+		TableName tn = TableName.valueOf("test4");
+		Table t = conn.getTable(tn);
+		Put put = null;
+		for (int i = 0; i < n; i++) {
+			put = new Put(Bytes.toBytes(i));
+			put.addColumn(Bytes.toBytes("data"), Bytes.toBytes("1"), Bytes.toBytes("tom"+i));
+			t.put(put);
+			System.out.println("i");
+		}
+		t.close();
+	}
+或者
+		HTable table = (HTable) conn.getTable(TableName.valueOf("people"));
+
+		/*
+		 * List<Put> puts = new ArrayList<Put>(); for(int i=1;i<= 100000; i++){
+		 * Put put = new Put(Bytes.toBytes("rk"+i));
+		 * put.addImmutable(Bytes.toBytes("info"),Bytes
+		 * .toBytes("money"),Bytes.toBytes(""+i)); puts.add(put); }
+		 */
+		List<Put> puts = new ArrayList<Put>(10000);
+		for (int i = 1; i <= 100001; i++) {
+			Put put = new Put(Bytes.toBytes("rk" + i));
+			put.addImmutable(Bytes.toBytes("info"), Bytes.toBytes("money"),
+					Bytes.toBytes("" + i));
+			puts.add(put);
+			if (i % 10000 == 0) {
+				table.put(puts);
+				puts = new ArrayList<Put>(10000);
+			}
+		}
+
+		table.put(puts);
+		table.close();
+查看hbase生成的表
+使用命令hbase hbck查看
+Table test3 is okay.
+    Number of regions: 1
+    Deployed on:  hadoop1,16020,1465548769070

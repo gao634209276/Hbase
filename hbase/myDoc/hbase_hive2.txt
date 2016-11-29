@@ -1,0 +1,92 @@
+
+Hive与HBase的整合功能的实现是利用两者本身对外的API接口互相进行通信，相互通信主要是依靠hive_hbase-handler.jar工具类
+
+1.把hbase，zookeeper 的jar 拷贝到hive 中
+
+[hadoop@h91 lib]$ rm -rf hbase-0.92.0.jar
+[hadoop@h91 lib]$ rm -rf hbase-0.92.0-tests.jar
+（删除其他版本）
+
+[hadoop@h91 hbase-0.90.6-cdh3u5]$ cp hbase-0.90.6-cdh3u5.jar /home/hadoop/hive-0.9.0-bin/lib/
+[hadoop@h91 hbase-0.90.6-cdh3u5]$ cp hbase-0.90.6-cdh3u5-tests.jar /home/hadoop/hive-0.9.0-bin/lib/
+
+[hadoop@h91 lib]$ rm -rf zookeeper-3.4.3.jar
+
+[hadoop@h91 zookeeper-3.3.5-cdh3u5]$ cp zookeeper-3.3.5-cdh3u5.jar /home/hadoop/hive-0.9.0-bin/lib/
+
+
+2.修改 hive/conf下hive-site.xml文件
+[hadoop@h91 hive-0.9.0-bin]$ mkdir tmp
+[hadoop@h91 hive-0.9.0-bin]$ mkdir logs
+
+[hadoop@h91 conf]$ vi hive-site.xml
+以下内容 添加到文件底部  </configuration> 之上
+
+<!--
+<property>
+  <name>hive.exec.scratchdir</name>
+  <value>/home/hadoop/hive-0.9.0-bin/tmp/</value>
+</property>
+-->
+
+<property>
+  <name>hive.querylog.location</name>
+  <value>/home/hadoop/hive-0.9.0-bin/logs/</value>
+</property>
+
+<property>
+  <name>hive.aux.jars.path</name>
+  <value>file:///home/hadoop/hive-0.9.0-bin/lib/hive-hbase-handler-0.9.0.jar,file:///home/hadoop/hive-0.9.0-bin/lib/hbase-0.90.6-cdh3u5.jar,file:///home/hadoop/hive-0.9.0-bin/lib/zookeeper-3.3.5-cdh3u5.jar</value>
+</property>
+
+
+
+3.拷贝hbase-0.90.6-cdh3u5.jar 到所有hadoop节点 lib下（包括master节点）
+[hadoop@h91 hbase-0.90.6-cdh3u5]$ cp hbase-0.90.6-cdh3u5.jar /home/hadoop/hadoop-0.20.2-cdh3u5/lib/
+[hadoop@h91 hbase-0.90.6-cdh3u5]$ scp hbase-0.90.6-cdh3u5.jar hadoop@192.168.8.92:/home/hadoop/hadoop-0.20.2-cdh3u5/lib/
+[hadoop@h91 hbase-0.90.6-cdh3u5]$ scp hbase-0.90.6-cdh3u5.jar hadoop@192.168.8.93:/home/hadoop/hadoop-0.20.2-cdh3u5/lib/
+
+4.拷贝hbase/conf下的hbase-site.xml文件到所有hadoop节点(包括master)的hadoop/conf下
+[hadoop@h91 conf]$ cp hbase-site.xml /home/hadoop/hadoop-0.20.2-cdh3u5/conf/
+[hadoop@h91 conf]$ scp hbase-site.xml hadoop@192.168.8.92:/home/hadoop/hadoop-0.20.2-cdh3u5/conf/
+[hadoop@h91 conf]$ scp hbase-site.xml hadoop@192.168.8.93:/home/hadoop/hadoop-0.20.2-cdh3u5/conf/
+
+
+5.启动hive
+[hadoop@h91 hive-0.9.0-bin]$ bin/hive -hiveconf hbase.zookeeper.quorum=h91,h92,h93
+
+----------------------------------------------------------------
+例子
+1创建 hbase识别的表
+hive>
+CREATE TABLE hbase_table_1(key int, value string)
+STORED BY 'org.apache.hadoop.hive.hbase.HBaseStorageHandler'
+WITH SERDEPROPERTIES ("hbase.columns.mapping" = ":key,cf1:val")
+TBLPROPERTIES ("hbase.table.name" = "sq");
+
+***（hbase.table.name 定义在hbase的table名称
+     hbase.columns.mapping 定义在hbase的列族）****
+
+2.创建 hive表
+hive> create table ha1(id int,name string)
+     row format delimited
+     fields terminated by '\t'
+     stored as textfile;
+
+[hadoop@h91 ~]$ vi ha1.txt
+11      zs
+22      ls
+33      ww
+
+hive> load data local inpath '/home/hadoop/ha1.txt' into table ha1;
+
+hive-0.7.1-cdh3u5
+
+~~hive> select * from  hbase_table_1;
+
+3.[hadoop@h91 hbase-0.90.6-cdh3u5]$ bin/hbase shell
+
+hbase(main):002:0> scan 'sq'
+（能看到结果 说明hive把数据存到hbase中）
+
+

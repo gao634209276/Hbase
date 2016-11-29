@@ -1,0 +1,278 @@
+中文官方文档http://abloz.com/hbase/book.html#quickstart
+快速开始
+单机配置:
+下载解压最新版本
+conf/hbase-site.xml
+<configuration>
+  <property>
+    <name>hbase.rootdir</name>
+    <value>file:///DIRECTORY/hbase</value>
+  </property>
+</configuration>
+默认 hbase.rootdir 是指向 /tmp/hbase-${user.name},在重启后丢失数据(重启的时候操作系统会清理/tmp目录)
+
+启动 HBase
+./bin/start-hbase.sh
+Shell 练习
+创建一个名为 test 的表，这个表只有一个 列族 为 cf。可以列出所有的表来检查创建情况，然后插入些值。
+create 'test', 'cf'
+put 'test', 'row1', 'cf:a', 'value1'
+put 'test', 'row2', 'cf:b', 'value2'
+put 'test', 'row3', 'cf:c', 'value3'
+Scan这个表，操作如下
+scan 'test'
+ROW        COLUMN+CELL
+row1       column=cf:a, timestamp=1288380727188, value=value1
+row2       column=cf:b, timestamp=1288380738440, value=value2
+row3       column=cf:c, timestamp=1288380747365, value=value3
+3 row(s) in 0.0590 seconds
+以上我们分别插入了3行。第一个行key为row1, 列为 cf:a， 值是 value1。HBase中的列是由 列族前缀和列的名字组成的，以冒号间隔。例如这一行的列名就是a.
+Get一行，操作如下
+get 'test', 'row1'
+COLUMN      CELL
+cf:a        timestamp=1288380727188, value=value1
+1 row(s) in 0.0400 seconds
+disable 再 drop 这张表，可以清除你刚刚的操作
+hbase(main):012:0> disable 'test'
+0 row(s) in 1.0930 seconds
+hbase(main):013:0> drop 'test'
+0 row(s) in 0.0770 seconds
+关闭shell
+运行停止脚本来停止HBase.
+$ ./bin/stop-hbase.sh
+stopping hbase...............
+===================================
+hbase分布式配置,使用自带zookeeper
+##hbase-env.sh
+export JAVA_HOME=/usr/local/java/jdk1.7.0_80/
+创建对应data目录
+##hbase-site.xml
+	存储在hdfs上
+	hbase.rootdir	hdfs://cluster/user/hbase
+	开启分布式模式
+	hbase.cluster.distributed	true
+	配置zookeeper
+	hbase.zookeeper.property.clientPort		2181
+	hbase.zookeeper.quorum		hadoop,hadoop1,hadoop2
+	hbase.zookeeper.property.dataDir	/opt/modules/hbase-1.2.1/data
+	hbase.zookeeper.session.timeout		90000
+	hbase.tmp.dir	/opt/modules/hbase-1.2.1/data/tmp
+设置##regionservers
+	hadoop1
+	hadoop2
+配置默认的backup-masters
+	##touch conf/backup-masters
+	hadoop1
+---------------------------------------------------
+启动进程:
+hadoop@hadoop:~$ xjps.sh
+-----xcall from hadoop ------
+5483 DataNode
+5689 SecondaryNameNode
+11917 HMaster
+11841 HQuorumPeer
+5309 NameNode
+12709 Jps
+-----xcall from hadoop1 ------
+3776 HQuorumPeer
+3866 HRegionServer
+4298 Jps
+1710 DataNode
+-----xcall from hadoop2 ------
+3250 HQuorumPeer
+1719 DataNode
+3571 Jps
+3346 HRegionServer
+启动shell
+/bin/hbase shell
+create 'test2','data'
+list
+put 'test2','row1','data:1','tom'
+put 'test2','row2','data:2','tomas'
+put 'test2','row3','data:3','tomasLee'
+hbase(main):019:0> scan 'test2'
+ROW                   COLUM+CELL
+ row1                 column=data:1, timestamp=1465549212466, value=tom
+ row2                 column=data:2, timestamp=1465549212519, value=tomas
+ row3                 column=data:3, timestamp=1465549213378, value=tomasLee
+3 row(s) in 0.0230 second
+put 'test2','row3','data:3','hello,tomasLee'
+=================================================
+设置的hbase的根目录在hdfs上,
+<name>hbase.rootdir</name>
+<value>hdfs://hadoop:9000/user/hbase</value>
+那么启动hbase,创建表后,通过hdfs产看hbase的结构
+hadoop@hadoop:~$ hadoop fs -ls /user/hbase
+Found 7 items
+/user/hbase/.tmp
+/user/hbase/MasterProcWALs
+/user/hbase/WALs
+存放数据的目录/user/hbase/data,这里有连个子目录为default和hbase
+hbase数据库有namespace,ns在逻辑上对表进行分组,便与管理,这里的default是默认的,用于存放用户默认创建的表,例如创建的test表
+/user/hbase/data/default/test
+/user/hbase/data/default/test/.tabledesc	//表信息
+/user/hbase/data/default/test/.tabledesc/.tableinfo.0000000001
+/user/hbase/data/default/test/.tmp  //临时目录
+/user/hbase/data/default/test/76c29ed885b4563e1dedffc6c988a227
+/user/hbase/data/default/test/76c29ed885b4563e1dedffc6c988a227/.regioninfo
+cf是test的列族
+/user/hbase/data/default/test/76c29ed885b4563e1dedffc6c988a227/cf
+/user/hbase/data/default/test/76c29ed885b4563e1dedffc6c988a227/recovered.edits
+hbase目录存放的是hbase自己的内部表,分为meta和namespace连个表(目录)
+hbase的版本和id:hbase.id,hbase.version
+然后是hbase 的Wal文件和目录oldWALs,.tmp,文件为:MasterProcWALs,WALs
+
+=======================================================================
+shell操作一览表:
+
+COMMAND GROUPS:
+Group name: general
+Commands: status, table_help, version, whoami
+
+Group name: ddl
+Commands: alter, alter_async, alter_status, create, describe, disable, disable_all, drop, drop_all, enable, enable_all, exists, get_table, is_disabled, is_enabled, list, locate_region, show_filters
+
+Group name: namespace
+Commands: alter_namespace, create_namespace, describe_namespace, drop_namespace, list_namespace, list_namespace_tables
+
+Group name: dml
+Commands: append, count, delete, deleteall, get, get_counter, get_splits, incr, put, scan, truncate, truncate_preserve
+
+Group name: tools
+Commands: assign, balance_switch, balancer, balancer_enabled, catalogjanitor_enabled, catalogjanitor_run, catalogjanitor_switch, close_region, compact, compact_rs, flush, major_compact, merge_region, move, normalize, normalizer_enabled, normalizer_switch, split, trace, unassign, wal_roll, zk_dump
+
+Group name: replication
+Commands: add_peer, append_peer_tableCFs, disable_peer, disable_table_replication, enable_peer, enable_table_replication, list_peers, list_replicated_tables, remove_peer, remove_peer_tableCFs, set_peer_tableCFs, show_peer_tableCFs
+
+Group name: snapshots
+Commands: clone_snapshot, delete_all_snapshot, delete_snapshot, list_snapshots, restore_snapshot, snapshot
+
+Group name: configuration
+Commands: update_all_config, update_config
+
+Group name: quotas
+Commands: list_quotas, set_quota
+
+Group name: security
+Commands: grant, list_security_capabilities, revoke, user_permission
+
+Group name: procedures
+Commands: abort_procedure, list_procedures
+
+Group name: visibility labels
+Commands: add_labels, clear_auths, get_auths, list_labels, set_auths, set_visibility
+
+SHELL USAGE:
+Quote all names in HBase Shell such as table and column names.  Commas delimit
+command parameters.  Type <RETURN> after entering a command to run it.
+Dictionaries of configuration used in the creation and alteration of tables are
+Ruby Hashes. They look like this:
+
+{'key1' => 'value1', 'key2' => 'value2', ...}
+
+and are opened and closed with curley-braces.  Key/values are delimited by the
+'=>' character combination.  Usually keys are predefined constants such as
+NAME, VERSIONS, COMPRESSION, etc.  Constants do not need to be quoted.  Type
+'Object.constants' to see a (messy) list of all constants in the environment.
+
+If you are using binary keys or values and need to enter them in the shell, use
+double-quote'd hexadecimal representation. For example:
+
+hbase> get 't1', "key\x03\x3f\xcd"
+hbase> get 't1', "key\003\023\011"
+hbase> put 't1', "test\xef\xff", 'f1:', "\x01\x33\x40"
+
+For more on the HBase Shell, see http://hbase.apache.org/book.html
+------------------------------------------------
+使用帮助获取单个命令使用,
+help 'scan'
+Scan a table; pass table name and optionally a dictionary of scanner
+specifications.  Scanner specifications may include one or more of:
+TIMERANGE, FILTER, LIMIT, STARTROW, STOPROW, ROWPREFIXFILTER, TIMESTAMP,
+MAXLENGTH or COLUMNS, CACHE or RAW, VERSIONS, ALL_METRICS or METRICS
+
+If no columns are specified, all columns will be scanned.
+To scan all members of a column family, leave the qualifier empty as in
+'col_family'.
+
+The filter can be specified in two ways:
+1. Using a filterString - more information on this is available in the
+Filter Language document attached to the HBASE-4176 JIRA
+2. Using the entire package name of the filter.
+
+If you wish to see metrics regarding the execution of the scan, the
+ALL_METRICS boolean should be set to true. Alternatively, if you would
+prefer to see only a subset of the metrics, the METRICS array can be
+defined to include the names of only the metrics you care about.
+
+Some examples:
+#注意HBase严格区分大小写
+  hbase> scan 'hbase:meta'
+  hbase> scan 'hbase:meta', {COLUMNS => 'info:regioninfo'}
+  多列,限制10行,开始行
+  hbase> scan 'ns1:t1', {COLUMNS => ['c1', 'c2'], LIMIT => 10, STARTROW => 'xyz'}
+  hbase> scan 't1', {COLUMNS => ['c1', 'c2'], LIMIT => 10, STARTROW => 'xyz'}
+  hbase> scan 't1', {COLUMNS => 'c1', TIMERANGE => [1303668804, 1303668904]}
+  hbase> scan 't1', {REVERSED => true}
+  hbase> scan 't1', {ALL_METRICS => true}
+  hbase> scan 't1', {METRICS => ['RPC_RETRIES', 'ROWS_FILTERED']}
+  hbase> scan 't1', {ROWPREFIXFILTER => 'row2', FILTER => "
+    (QualifierFilter (>=, 'binary:xyz')) AND (TimestampsFilter ( 123, 456))"}
+  hbase> scan 't1', {FILTER =>
+    org.apache.hadoop.hbase.filter.ColumnPaginationFilter.new(1, 0)}
+  hbase> scan 't1', {CONSISTENCY => 'TIMELINE'}
+For setting the Operation Attributes
+  hbase> scan 't1', { COLUMNS => ['c1', 'c2'], ATTRIBUTES => {'mykey' => 'myvalue'}}
+  hbase> scan 't1', { COLUMNS => ['c1', 'c2'], AUTHORIZATIONS => ['PRIVATE','SECRET']}
+For experts, there is an additional option -- CACHE_BLOCKS -- which
+switches block caching for the scanner on (true) or off (false).  By
+default it is enabled.  Examples:
+
+  hbase> scan 't1', {COLUMNS => ['c1', 'c2'], CACHE_BLOCKS => false}
+
+Also for experts, there is an advanced option -- RAW -- which instructs the
+scanner to return all cells (including delete markers and uncollected deleted
+cells). This option cannot be combined with requesting specific COLUMNS.
+Disabled by default.  Example:
+
+  hbase> scan 't1', {RAW => true, VERSIONS => 10}
+
+Besides the default 'toStringBinary' format, 'scan' supports custom formatting
+by column.  A user can define a FORMATTER by adding it to the column name in
+the scan specification.  The FORMATTER can be stipulated:
+
+ 1. either as a org.apache.hadoop.hbase.util.Bytes method name (e.g, toInt, toString)
+ 2. or as a custom class followed by method name: e.g. 'c(MyFormatterClass).format'.
+
+Example formatting cf:qualifier1 and cf:qualifier2 both as Integers:
+  hbase> scan 't1', {COLUMNS => ['cf:qualifier1:toInt',
+    'cf:qualifier2:c(org.apache.hadoop.hbase.util.Bytes).toInt'] }
+
+Note that you can specify a FORMATTER by column only (cf:qualifier).  You cannot
+specify a FORMATTER for all columns of a column family.
+
+Scan can also be used directly from a table, by first getting a reference to a
+table, like such:
+
+  hbase> t = get_table 't'
+  hbase> t.scan
+
+Note in the above situation, you can still provide all the filtering, columns,
+options, etc as described above.
+----------------------------------------
+help 'count'
+ hbase> count 'ns1:t1'
+ hbase> count 't1'
+ hbase> count 't1', INTERVAL => 100000
+ hbase> count 't1', CACHE => 1000
+ hbase> count 't1', INTERVAL => 10, CACHE => 1000
+
+The same commands also can be run on a table reference. Suppose you had a reference
+t to table 't1', the corresponding commands would be:
+
+ hbase> t.count
+ 设置间隔,每隔100000显示一次
+ hbase> t.count INTERVAL => 100000
+ 设置缓存,1000条
+ hbase> t.count CACHE => 1000
+ hbase> t.count INTERVAL => 10, CACHE => 1000

@@ -1,0 +1,162 @@
+Hbaser访问方式
+Hbase Java编程
+Hbase多语言编程
+Hbase-MapReduce编程
+总结
+
+1 Hbase访问方式
+
+1. Native Java API
+最常规和高线的访问方式;
+2. HBase Shell
+HBase的命令行工具,最简单的接口,适合HBase管理使用;
+3. Thrift Gateway
+利用Thrift序列化技术,支持C++,PHP,Python等多种语言,适合其他异构系统在线访问HBase表数据
+4. REST Gateway
+支持REST风格的Http API访问HBase,解除了语言限制;
+5. MapReduce
+直接使用MapReduce作业处理Hbase数据;
+使用Pig/hive处理Hbase数据
+2 Hbase Java API 概述
+1. Hbase是用Java语言编写的,支持Java编程式自然而然的事情
+2. 支持CRUD操作
+3. Java API包含Hbase shell支持的所有功能,甚至更多
+4. Java API是访问Hbase最快的方式
+Java API程序设计步骤
+1. 创建一个Configuration 对象
+Configuration conf = HbaseConfiguration.create();
+包含各种配置信息
+2. 构建一个HTable句柄
+HTable table = new HTalbe(conf,tableName);
+提供Configuration对象
+提供待访问Table的名称
+3. 执行相应的操作
+table.getTableName();
+执行put,get,delet,scan等操作
+4. 关闭HTable句柄
+table.close();
+将内存数据刷新到磁盘上
+释放各种资源
+事例程序
+
+2.1 创建Configuration对象
+Configuration对象包装了客户端程序连接Hbase服务所需的全部信息
+Zookeeper位置
+Zookeeper连接超时时间
+HbaseConfiguration.create()内部逻辑
+从CLASSPATH中加载hbase-default.xml和hbase-site.xml两个文件
+hbase-default.xml已经被打包到HBase jar包中
+hbase-site.xml需要添加到CLASSPATH中
+hbase-site.xml将覆盖hbase-default.xml中的同名属性
+Hbase如何从ClASSPATH中获取hbase-site.xml信息
+修改hadoop脚本,将Hbase CLASSPATH加入
+在<hadoop_install>/conf/hadoop-env.sh中设置
+export HADOOP_CLASSPATH=$HBASE_HOEM/*:$HBASE_HOME/conf:$HADOOP_CLASSPATH
+检查Hadoop CLASSPATH
+hadoop classpath
+hadoop classpath | grep hbase
+如果已经有一个Configuration文件,可进行如下操作
+Configuration newConf = Configuration.cteate(existingConf);
+用户自定义的配置文件间在已有配置文件之后加载
+将覆盖hbase-default.xml和hbase-site.xml中的配置
+可单独覆盖某一个或多个参数值
+Configuration conf = HbaseConfiguration.create();
+conf.set(“hbase.zookeeper.quorum”,”node1,node2”);
+通常不推荐这么做
+2.2 创建HTable句柄
+org.apatche.hadoop.hbase.client.HTable
+1. 一个table对应一个HTable句柄
+2. 提供了CRDU操作
+3. 设计简单,使用方便
+4. 提供行级事务
+1) 不支持多行事务或者表级别的事务
+2) 严格的行一直性
+3) 并发,顺序写
+5. 创建HTable句柄代价很大
+1) 扫描.META.表等
+2) 创建一次,以后尽可能服用;
+3) 如果需要创建多个Htable句柄,使用HtablePool
+6. HTable并非线程安全的
+一个线程创建一个即可
+7. Htable支持CRUD批处理
+非线程安全,仅是为了提高新能
+2.3 向HBase写入数据
+步骤1:创建一个Put对象;
+Put put = new Put(Bytes.toBytes(“rowkey”));
+步骤2:设置cell值;
+Put.add(family,column,value)
+Put.add(family,column,timestamp,value)
+Put.add(keyValue kv)
+步骤3:调用HTable中的put方法,写入数据;
+步骤4:关闭HTable句柄
+
+2.4 从Hbase中读取数据
+支持的API类型
+1) 通过rowkey获取一行数据
+2) 通过一个rowkey集合获取多条记录
+3) 扫描真个表或者表的一部分
+扫描表
+可止跌你扫描的范围[startkey endkey)
+表中数据是按照rowkey排序的
+API特点
+数目有限,是有简单
+读取数据是注意事项
+只读取需要的数据
+尽可能增加数据约束条件
+可增加family, column(s), time range 和 max versions等约束条件
+接口实例
+get.setTimeRange(minStamp,maxStamp)
+get.setMaxVersions(masVersions)
+get.addFamily(family)
+get.addColumn(family,column)
+
+1.1.1 打印
+
+2.5 从Hbase中删除数据
+
+2.6 从Htable中Scan数据
+
+3 Hbase多语言编程
+3.1 Hbase-Thrift拓展结构
+
+3.2 使用步骤
+1. HDFS/HBase安装
+2. 启动Hbase thrift server
+bin/start-daemon.sh start thrift
+3. 生成Hbase thrift client 接口文件
+thrift --gen php Hbase.thrift
+thrift --gen cpp Hbase.thrift
+4. 编写客户端代码
+3.3 Hbase C++编程
+
+1.1.2 Hbase C++编程--头文件
+
+1.1.3 C++编程--初始化
+
+1.1.4 C++ 获取所有表
+
+1.1.5 C++ 编程--创建表
+
+
+1.1.6 C++ 编程--出入数据
+
+C++ 编程 --全表扫描
+
+
+Hbase Python编程
+
+Hbase Python 编程--头文件与初始化
+
+1.1.7 Python编程获取所有表
+
+1.1.8 Python编程--创建表
+
+Python编程--插入数据
+
+1.1.9 Python编程--全表扫描
+
+
+3.4 Hbase更多语言编程
+
+Hbase MapReduce编程基础--基础
+

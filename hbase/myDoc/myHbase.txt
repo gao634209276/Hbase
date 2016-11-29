@@ -1,0 +1,179 @@
+HBase概述
+HBase物理模型
+HBase数据模型
+HBase基本架构
+HBase应用举例
+总结
+1 HBase概述
+HBase是一个构建在HDFS上的分布式列存储系统;
+Hbase是Apache Hadoop生态系统汇总的重要一员,主要用于海量结构化数据存储;
+从逻辑上讲,HBase将数据按照表,行和列进行存储.
+Hadoop1.x生态系统架构图中Hbase位置:
+
+1.1 Hbase与HDFS对比
+两者具有良好的容错性和扩展性,都可以扩展到成百上千节点;
+HDFS适合批处理场景;不支持数据随机查询;不适合增量数据处理;不支持数据更新.
+1.2 Hbase表的特点
+大:一个表可以有数十亿行,上百万列;
+无模式:每行都有一个可排序的主键和任意对的列,列可以根据需要动态的增加,同一张表中不同的行可以有截然不同的列;
+面向列:面向列(族)的存储和权限控制,列(族)独立检索;
+稀疏:对于空(null)的列,并不占用该存储空间,表可以设计的非常稀疏;
+数据多版本:每个单元中的数据可有多个版本,默认情况下版本号自动分配,是单元插入式的时间戳;
+数据类型单一:Hbase中的数据都是字符串,没有类型;
+1.1.1 行存储和列存储
+
+2 Hbase数据模型
+Hbase是基于Google BigTable模型开发的,典型的key/value系统
+
+2.1 Hbase基本概念
+
+有几个重要的概念:
+每一行有一个Row key(行键),相当于是一个索引,天然建立这个索引,通过Row key快速找到所在的列并提取出来.
+每一行分为很多的Column Family,每个Column Family由存在很多的列,这里就有一个Value
+Value是一个单元,单元里可能有很多的值,这些值通过时间戳区别
+Hbase逻辑视图
+例如下面图示:
+通过Rowkey为cutting找到对应行,在这行中找到为info的Column Family,然后再通过height的列取出对应的value是9ft;(列与列之间用”,”隔开,列中的列名和数值用”:”分开,列与值是以k/v对形式存放
+而tlipcon名为roles的Column Family存储3列,但其中两列都是Hadoop, 这两列通过时间戳来区分;
+
+
+2.2 Rowkey与Column Family
+
+
+2.3 Row Key
+
+Version Number
+每一个RowKey的Version Number是唯一的,默认值为系统时间戳,类型为Long
+Value (Cell)是Byte array
+
+
+1. Hbase schema可以有多个Table(在Hbase中没有Table的概念,这里指的是多个Column Family组成的类似表)每个表可由多个Column Family组成
+2. Hbase 可以有(动态)Dynamic Column
+3. 列名称是编码在cell中的,不同的cell可以拥有不同的类
+4. Version Number可由用户提供
+5. 无需以递增的顺序插入,每行的rowkey必须是唯一的
+6. Table可能非常稀疏
+7. 很多cell可以是空的
+
+Hbase支持的操作
+1. 所有操作均是基于rowkey的;
+2. 支持CRUD(Create, Read, Update 和 Delete)和Scan;
+3. 单行操作
+1) Put
+2) Get
+3) Scan
+4. 多行操作
+1) Scan
+2) MultiPut
+5. 没有内置join操作,可使用MapReduce解决.
+Hbase物理模型
+每个column family存储在HDFS上的一个单独文件中;
+Key和Version number在每个column family中均由一份.
+控制不会被保存.
+
+实例:
+Row Key为cutting,在名为info的Column Family存储两个值,分别按照higein和state的列存储,每列按照时间戳为Version Namber.
+同时在roles的列族中存储两个value
+默认情况先按照row key排序,row key中有多个值,则按照时间戳再排序
+
+1.1.2 物理存储
+1. Table中的所有行都按照row key的字典序排列
+2. Table在行的方向上分割为多个Region(范围区域)
+
+3. Region按照大小分割,每个表开始只有一个region,随着数据增多,region不断增大,当增大到一个阈值的时候,region就会等分为两个新的region,之后会有越来越多的region
+
+4. Region是Hbase中分布式存储和负载均衡的最小单元,通过那个的Region分布到不同RegionServer上.
+
+每个Region是一个整体,不能拆开存储
+5. Region虽然是分布式存储的最小单元,但并不是存储的最小单元
+1) Region由一个或多个Store组成,每个store保存一个columns family;
+2) 每个Store又由一个memStore和0至多个StoreFile组成;
+3) memStore存储在内存中,StoreFile存储在HDFS上.
+
+
+3 Hbase架构
+
+整体来讲Hbase运行在hadoop的HDFS之上,里面所有的文件除了内存中存储的数据之外都存储在HDFS中.
+HBase本身角度上有四个重要组件
+1. Client:包含访问Hbase 的接口,并维护cache来加快对HBase的访问
+2. Zookeeper:
+保证任何时候,集群只有一个master
+存储所有Region的寻址入口
+实时监控Region server的上线和下线信息,并实时通知给Master
+存储HBase的schema和table元数据
+3. HMaster:
+为Region server分配region
+负责Region server的负载均衡
+发现失效的Region server并重新分配其上的region
+管理用户对table的增删改查操作
+4. HRegionServer:
+Region server维护region,处理这些region的IO请求
+Region server负责切分在运行过程中便的过大的region
+5. Region:存储MemStore,包括0个到多个StoreFile,StoreFile的格式是Hfile,所有的StoreFile都以Hfile的格式存储在HDFS上
+Client访问Resion,进行数据读写,这是与Zookeeper进行交互,通过ZK拿到数据的位置,HRegionServer上拿到数据, 所以如果HMaster挂掉,Client仍然可以存取数据, 从一定程度上说,HMaster没有单点故障,但当HMaster挂掉后, HRegionServer需要恢复,如 HRegionServer的Region增大到一定阈值后,需要HMaster将数据迁移到另外的一个节点上,这需要一定的时间,这时候将不能迁移,HMaster恢复后才能迁移
+3.1 Zookeeper作用
+HBase依赖Zookeeper
+默认情况下,HBase管理Zookeeper实例;比如,启动或者停止Zookeeper
+Master与RegionServers启动是会向Zookeeper注册
+Zookeeper的引入是的Master不在是单点故障
+
+3.2 Write-Ahead-Log(WAL)
+
+Client向HBase中进行增删改查操作时候,这些操作不是直接在某一个HRegion上操作,比如插入某条数据,是先记录到一条日志中,确保日志成功后,再写到HRegion.这样确保如果直接在HRegion上写,中途突然HRegion挂掉数据丢失的情况
+3.3 HBase容错性
+1. Master容错:Zookeeper重新选择一个新的Master;无Master过程中,数据读取扔照常进行;region切分,负载均衡等无法进行;
+2. RegionServer容错:定时向Zookeeper汇报心跳,如果一段时间未出现心跳,Master将该RegionServer上的Region重新分配到其他RegionServer上;失效服务器上”预写”(WAL)日志由主服务器进行分割并派送给新的RegionServer
+3. Zookeeper容错:Zookeeper是一个可靠的服务,一般配置3或5个Zookeeper实例
+3.4 Region定位
+
+定位Region需要
+寻找RegionServer
+Zookeeper(查找root表的位置)
+-ROOT-(单Region)(在root中获取Mete表位置)
+.META. (在Meter表找到相应的Region的位置)
+用户表(然后才可以读取某一个K/V对)
+
+Zookeeper中记录了-ROOT-表的location
+-ROOT-表包含.META.表所在的region列表,该表只会有一个Region;
+.META.表包含所有的用户空间region列表,以及REgionServer的服务器地址
+juh
+Client只有在第一次查找时候,才经过以上四步定位,查找以后,会将root表和meta表的信息缓存到本地,当再次查找时,Client在本地的表中查找
+3.5 HDFS与HBase比较
+
+3.6 关系数据库与Hbase比较
+
+
+行标识访问:B树索引
+
+3.7 何时使用HBase
+1. 需要对数据进行随机读操作或者随机写操作;
+2. 大数据上高并发操作,比如每秒对PB级数据进行上千次操作;
+3. 读写访问均是非常简单的操作.
+
+使用HBase的公司
+
+Hbase在淘宝的应用
+1. 淘宝实时传输平台
+数据每天TB级的数据写入应用
+就的存储模型(内存+硬盘)
+发布和订阅的使用场景
+2. 淘宝指数
+倒排索引的属性查询(RedisHbase)
+实时/性能
+客户端Join
+高冗余,每行百兆级的数据应用
+
+
+3. 交易历史记录查询系统
+百亿行数据表,千亿级二级索引表
+每天千万行更新
+查询场景简单,检索条件较少
+关系型数据库所带来的问题
+基于userli+time+id rowkey设计
+成绩考虑
+Hbase在facebook应拥--消息系统
+Facebook创建了Cassandra,最后却弃用Cassandra,是有了HBase;
+消息系统(聊天系统,邮件系统等)需求:
+一个较小的临时数据集,是经常变化的
+一个不断增加的数据集,是很少被访问的
+Hbase同时解决了以上问题
