@@ -1,4 +1,5 @@
 package demo;
+
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.*;
 import org.apache.hadoop.hbase.client.*;
@@ -23,21 +24,19 @@ public class HbaseExample {
 	 * @throws Exception
 	 */
 	public static void creatTable(String tableName, String[] family, Configuration config) throws Exception {
-		try (Connection connection = ConnectionFactory.createConnection(config);
-		     Admin admin = connection.getAdmin()) {
-			HTableDescriptor desc = new HTableDescriptor(TableName.valueOf(tableName));
-			for (int i = 0; i < family.length; i++) {
-				desc.addFamily(new HColumnDescriptor(family[i]));
-			}
-			if (admin.tableExists(desc.getTableName())) {
-				System.out.println("table Exists!");
-				throw new Exception("table Exists!");
-			} else {
-				admin.createTable(desc);
-				System.out.println("create table Success!");
-			}
+		Connection connection = ConnectionFactory.createConnection(config);
+		Admin admin = connection.getAdmin();
+		HTableDescriptor desc = new HTableDescriptor(TableName.valueOf(tableName));
+		for (int i = 0; i < family.length; i++) {
+			desc.addFamily(new HColumnDescriptor(family[i]));
 		}
-
+		if (admin.tableExists(desc.getTableName())) {
+			System.out.println("table Exists!");
+			throw new Exception("table Exists!");
+		} else {
+			admin.createTable(desc);
+			System.out.println("create table Success!");
+		}
 	}
 
 
@@ -50,20 +49,20 @@ public class HbaseExample {
 	 * @throws Exception
 	 */
 	public static void creatTableForce(String tableName, String[] family, Configuration config) throws Exception {
-		try (Connection connection = ConnectionFactory.createConnection(config);
-		     Admin admin = connection.getAdmin()) {
-			HTableDescriptor desc = new HTableDescriptor(TableName.valueOf(tableName));
-			for (int i = 0; i < family.length; i++) {
-				desc.addFamily(new HColumnDescriptor(family[i]));
-			}
-			if (admin.tableExists(desc.getTableName())) {
-				admin.disableTable(desc.getTableName());
-				admin.deleteTable(desc.getTableName());
-			}
-			admin.createTable(desc);
-			System.out.println("create table Success!");
-
+		Connection connection = ConnectionFactory.createConnection(config);
+		Admin admin = connection.getAdmin();
+		HTableDescriptor desc = new HTableDescriptor(TableName.valueOf(tableName));
+		for (int i = 0; i < family.length; i++) {
+			desc.addFamily(new HColumnDescriptor(family[i]));
 		}
+		if (admin.tableExists(desc.getTableName())) {
+			admin.disableTable(desc.getTableName());
+			admin.deleteTable(desc.getTableName());
+		}
+		admin.createTable(desc);
+		System.out.println("create table Success!");
+
+
 	}
 
 	/**
@@ -74,14 +73,14 @@ public class HbaseExample {
 	 * @throws Exception
 	 */
 	public static void deleteTable(String tableName, Configuration config) throws Exception {
-		try (Connection connection = ConnectionFactory.createConnection(config);
-		     Admin admin = connection.getAdmin()) {
-			TableName tn = TableName.valueOf(tableName);
-			if (admin.tableExists(tn)) {
-				admin.disableTable(tn);
-				admin.deleteTable(tn);
-			}
+		Connection connection = ConnectionFactory.createConnection(config);
+		Admin admin = connection.getAdmin();
+		TableName tn = TableName.valueOf(tableName);
+		if (admin.tableExists(tn)) {
+			admin.disableTable(tn);
+			admin.deleteTable(tn);
 		}
+
 	}
 
 
@@ -93,11 +92,11 @@ public class HbaseExample {
 	 * @throws IOException
 	 */
 	public static HTableDescriptor[] listTables(Configuration config) throws IOException {
-		try (Connection connection = ConnectionFactory.createConnection(config);
-		     Admin admin = connection.getAdmin()) {
-			HTableDescriptor hTableDescriptors[] = admin.listTables();
-			return hTableDescriptors;
-		}
+		Connection connection = ConnectionFactory.createConnection(config);
+		Admin admin = connection.getAdmin();
+		HTableDescriptor hTableDescriptors[] = admin.listTables();
+		return hTableDescriptors;
+
 	}
 
 
@@ -113,19 +112,18 @@ public class HbaseExample {
 	 * @throws Exception
 	 */
 	public static void instertRow(String tableName, Configuration config, String rowkey, String colFamily, String col, String val) throws Exception {
-		try (Connection connection = ConnectionFactory.createConnection(config)) {
-			Table table = connection.getTable(TableName.valueOf(tableName));
-			Put put = new Put(Bytes.toBytes(rowkey));
-			put.addColumn(Bytes.toBytes(colFamily), Bytes.toBytes(col), Bytes.toBytes(val));
-			table.put(put);
+		Connection connection = ConnectionFactory.createConnection(config);
+		Table table = connection.getTable(TableName.valueOf(tableName));
+		Put put = new Put(Bytes.toBytes(rowkey));
+		put.addColumn(Bytes.toBytes(colFamily), Bytes.toBytes(col), Bytes.toBytes(val));
+		table.put(put);
 
-			//批量插入
+		//批量插入
 		   /* List<Put> putList = new ArrayList<Put>();
-		    puts.add(put);
+			puts.add(put);
             table.put(putList);*/
-			table.close();
-			System.out.printf("adding success!!Table:%s,Row:%s,Column=%s:%s,Value=%s\n", tableName, rowkey, colFamily, col, val);
-		}
+		table.close();
+		System.out.printf("adding success!!Table:%s,Row:%s,Column=%s:%s,Value=%s\n", tableName, rowkey, colFamily, col, val);
 	}
 
 
@@ -140,22 +138,21 @@ public class HbaseExample {
 	 * @throws Exception
 	 */
 	public static void deleRow(String tableName, Configuration config, String rowkey, String colFamily, String col) throws Exception {
-		try (Connection connection = ConnectionFactory.createConnection(config)) {
-			Table table = connection.getTable(TableName.valueOf(tableName));
-			Delete delete = new Delete(Bytes.toBytes(rowkey));
-			//删除指定列族
-			if (colFamily != null && col == null)
-				delete.addFamily(Bytes.toBytes(colFamily));
-			//删除指定列
-			if (colFamily != null && col != null)
-				delete.addColumn(Bytes.toBytes(colFamily), Bytes.toBytes(col));
-			table.delete(delete);
-			//批量删除
+		Connection connection = ConnectionFactory.createConnection(config);
+		Table table = connection.getTable(TableName.valueOf(tableName));
+		Delete delete = new Delete(Bytes.toBytes(rowkey));
+		//删除指定列族
+		if (colFamily != null && col == null)
+			delete.addFamily(Bytes.toBytes(colFamily));
+		//删除指定列
+		if (colFamily != null && col != null)
+			delete.addColumn(Bytes.toBytes(colFamily), Bytes.toBytes(col));
+		table.delete(delete);
+		//批量删除
 		   /* List<Delete> deleteList = new ArrayList<Delete>();
-		    deleteList.add(delete);
+			deleteList.add(delete);
             table.delete(deleteList);*/
-			table.close();
-		}
+		table.close();
 	}
 
 	public static void deleRow(String tableName, Configuration config, String rowkey, String colFamily) throws Exception {
@@ -179,17 +176,16 @@ public class HbaseExample {
 	 * @throws Exception
 	 */
 	public static Result getData(String tableName, Configuration config, String rowkey, String colFamily, String col) throws Exception {
-		try (Connection connection = ConnectionFactory.createConnection(config)) {
-			Table table = connection.getTable(TableName.valueOf(tableName));
-			Get get = new Get(Bytes.toBytes(rowkey));
-			if (colFamily != null && col == null)
-				get.addFamily(Bytes.toBytes(colFamily));
-			if (colFamily != null && col != null)
-				get.addColumn(Bytes.toBytes(colFamily), Bytes.toBytes(col));
-			Result result = table.get(get);
-			table.close();
-			return result;
-		}
+		Connection connection = ConnectionFactory.createConnection(config);
+		Table table = connection.getTable(TableName.valueOf(tableName));
+		Get get = new Get(Bytes.toBytes(rowkey));
+		if (colFamily != null && col == null)
+			get.addFamily(Bytes.toBytes(colFamily));
+		if (colFamily != null && col != null)
+			get.addColumn(Bytes.toBytes(colFamily), Bytes.toBytes(col));
+		Result result = table.get(get);
+		table.close();
+		return result;
 	}
 
 	public static Result getData(String tableName, Configuration config, String rowkey, String colFamily) throws Exception {
@@ -228,22 +224,21 @@ public class HbaseExample {
 	 * 取出来的将是5193:后面跟着数字的元素
 	 */
 	public static List<Result> scanData(String tableName, Configuration config, String startRow, String stopRow, int limit) throws Exception {
-		try (Connection connection = ConnectionFactory.createConnection(config)) {
-			Table table = connection.getTable(TableName.valueOf(tableName));
-			Scan scan = new Scan();
-			if (startRow != null && stopRow != null) {
-				scan.setStartRow(Bytes.toBytes(startRow));
-				scan.setStopRow(Bytes.toBytes(stopRow));
-			}
-			scan.setBatch(limit);
-			List<Result> result = new ArrayList<Result>();
-			ResultScanner resultScanner = table.getScanner(scan);
-			for (Result r : resultScanner) {
-				result.add(r);
-			}
-			table.close();
-			return result;
+		Connection connection = ConnectionFactory.createConnection(config);
+		Table table = connection.getTable(TableName.valueOf(tableName));
+		Scan scan = new Scan();
+		if (startRow != null && stopRow != null) {
+			scan.setStartRow(Bytes.toBytes(startRow));
+			scan.setStopRow(Bytes.toBytes(stopRow));
 		}
+		scan.setBatch(limit);
+		List<Result> result = new ArrayList<Result>();
+		ResultScanner resultScanner = table.getScanner(scan);
+		for (Result r : resultScanner) {
+			result.add(r);
+		}
+		table.close();
+		return result;
 	}
 
 	public static List<Result> scanData(String tableName, Configuration config, int limit) throws Exception {

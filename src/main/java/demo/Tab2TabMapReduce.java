@@ -56,7 +56,6 @@ public class Tab2TabMapReduce extends Configured implements Tool {
 		}
 	}
 
-	@Override
 	public int run(String[] args) throws Exception {
 		//create job
 		Job job = Job.getInstance(getConf(), this.getClass().getSimpleName());

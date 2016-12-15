@@ -42,7 +42,6 @@ public class HFile2TabMapReduce extends Configured implements Tool {
 		}
 	}
 
-	@Override
 	public int run(String[] args) throws Exception {
 		//create job
 		Job job = Job.getInstance(this.getConf(), this.getClass().getSimpleName());
